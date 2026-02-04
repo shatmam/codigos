@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Super Streaming</title>
+
+  <style>
+    :root{
+      --bg:#0f1220;
+      --card:#161a2f;
+      --card2:#10132b;
+      --text:#ffffff;
+      --muted:#b9bfd6;
+      --border:#2a2f4a;
+      --brand:#e50914;
+      --shadow: 0 10px 30px rgba(0,0,0,.35);
+      --radius:14px;
+    }
+
+    *{ box-sizing:border-box; }
+    body{
+      margin:0;
+      background:var(--bg);
+      color:var(--text);
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      line-height:1.35;
+    }
+
+    .wrap{
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 18px;
+    }
+
+    .hero{
+      text-align:center;
+      padding: 26px 12px 10px;
+    }
+    .hero h1{
+      margin:0;
+      font-size: clamp(26px, 4vw, 44px);
+      letter-spacing:.2px;
+    }
+    .hero h1 span{ color: var(--brand); }
+    .hero p{
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: clamp(14px, 2.3vw, 16px);
+    }
+
+    .panel{
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 14px;
+      margin-top: 14px;
+    }
+
+    .row{
+      display:flex;
+      gap:12px;
+      flex-wrap: wrap;
+      align-items:center;
+      justify-content: space-between;
+    }
+
+    .btn{
+      flex: 1 1 220px;
+      height: 46px;
+      border:none;
+      border-radius: 10px;
+      background: var(--brand);
+      color:#fff;
+      font-weight: 800;
+      font-size: 16px;
+      cursor:pointer;
+      transition: transform .06s ease, opacity .2s ease;
+    }
+    .btn:active{ transform: scale(.99); }
+    .btn:hover{ opacity:.92; }
+
+    .status{
+      flex: 2 1 300px;
+      text-align:left;
+      color: var(--muted);
+      font-size: 14px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: rgba(255,255,255,.04);
+      border: 1px solid rgba(255,255,255,.06);
+    }
+
+    .emails{
+      margin-top: 14px;
+      display:flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .email{
+      background: var(--card2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow:hidden;
+      box-shadow: var(--shadow);
+    }
+
+    .emailHead{
+      padding: 12px 14px;
+      border-bottom: 1px solid rgba(255,255,255,.08);
+    }
+
+    .subject{
+      font-weight: 800;
+      font-size: 15px;
+      margin:0 0 6px;
+      word-break: break-word;
+      overflow-wrap:anywhere;
+    }
+    .meta{
+      margin:0;
+      color: var(--muted);
+      font-size: 13px;
+      word-break: break-word;
+      overflow-wrap:anywhere;
+    }
+
+    .frameWrap{
+      background:#fff;
+    }
+
+    iframe{
+      width: 100%;
+      height: 520px;
+      border: 0;
+      display:block;
+      background:#fff;
+    }
+
+    /* 📱 Ajustes móviles */
+    @media (max-width: 768px){
+      .wrap{ padding: 12px; }
+      .panel{ padding: 12px; }
+      .status{ font-size: 13px; }
+      iframe{ height: 560px; } /* en móvil suele necesitar más alto */
+    }
+
+    /* 📱 Extra small */
+    @media (max-width: 420px){
+      .btn{ font-size: 15px; }
+      iframe{ height: 620px; }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <div class="hero">
+      <h1>🔥 Super <span>Streaming</span></h1>
+      <p>Correos de verificación Netflix (vista rápida)</p>
+    </div>
+
+    <div class="panel">
+      <div class="row">
+        <button class="btn" id="btn">📩 Ver correo</button>
+        <div class="status" id="status">⏳ Esperando acción…</div>
+      </div>
+      <div class="emails" id="result"></div>
+    </div>
+  </div>
+
+  <audio id="sound" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" preload="auto"></audio>
+
+  <script>
+    let timer = null;
+    let soundPlayed = false;
+
+    async function buscar(){
+      const status = document.getElementById("status");
+      const result = document.getElementById("result");
+
+      status.textContent = "🔍 Buscando correo...";
+      result.innerHTML = "";
+
+      let d;
+      try{
+        const res = await fetch("/api/emails", { cache: "no-store" });
+        d = await res.json();
+      } catch(e){
+        status.textContent = "❌ Error conectando al servidor";
+        auto();
+        return;
+      }
+
+      if(!d.emails || !d.emails.length){
+        status.textContent = "⏳ Esperando correo…";
+        auto();
+        return;
+      }
+
+      if(!soundPlayed){
+        document.getElementById("sound").play().catch(()=>{});
+        soundPlayed = true;
+      }
+
+      // si ya llegó, frenamos el auto refresh
+      if(timer){
+        clearInterval(timer);
+        timer = null;
+      }
+
+      // Render tarjetas
+      d.emails.forEach(e => {
+        const card = document.createElement("div");
+        card.className = "email";
+
+        const head = document.createElement("div");
+        head.className = "emailHead";
+
+        const subj = document.createElement("p");
+        subj.className = "subject";
+        subj.textContent = e.subject || "(Sin asunto)";
+
+        const meta = document.createElement("p");
+        meta.className = "meta";
+        meta.textContent = `${e.from || ""}${e.date ? " • " + e.date : ""}`;
+
+        head.appendChild(subj);
+        head.appendChild(meta);
+
+        const frameWrap = document.createElement("div");
+        frameWrap.className = "frameWrap";
+
+        const iframe = document.createElement("iframe");
+
+        // ✅ Permitir que links/botones abran en nueva pestaña
+        iframe.setAttribute(
+          "sandbox",
+          "allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
+        );
+        iframe.setAttribute("referrerpolicy","no-referrer");
+
+        // ✅ Forzar target=_blank dentro del correo
+        iframe.srcdoc = `<base target="_blank">${e.html || ""}`;
+
+        frameWrap.appendChild(iframe);
+
+        card.appendChild(head);
+        card.appendChild(frameWrap);
+
+        result.appendChild(card);
+      });
+
+      status.textContent = "✅ Correo cargado";
+    }
+
+    function auto(){
+      if(timer) return;
+      timer = setInterval(buscar, 10000);
+    }
+
+    document.getElementById("btn").addEventListener("click", buscar);
+  </script>
+</body>
+</html>
