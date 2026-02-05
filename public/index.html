@@ -49,6 +49,29 @@
       font-size: clamp(14px, 2.3vw, 16px);
     }
 
+    /* Contenedor del anuncio */
+    .ads-container {
+      width: 100%;
+      text-align: center;
+      margin: 20px 0;
+      padding: 10px;
+      background: rgba(255,255,255,0.02);
+      border-radius: var(--radius);
+      border: 1px dashed var(--border);
+      min-height: 100px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    .ads-label {
+      font-size: 10px;
+      color: var(--muted);
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
     .panel{
       background: var(--card);
       border: 1px solid var(--border);
@@ -139,15 +162,13 @@
       background:#fff;
     }
 
-    /* 📱 Ajustes móviles */
     @media (max-width: 768px){
       .wrap{ padding: 12px; }
       .panel{ padding: 12px; }
       .status{ font-size: 13px; }
-      iframe{ height: 560px; } /* en móvil suele necesitar más alto */
+      iframe{ height: 560px; }
     }
 
-    /* 📱 Extra small */
     @media (max-width: 420px){
       .btn{ font-size: 15px; }
       iframe{ height: 620px; }
@@ -160,6 +181,12 @@
     <div class="hero">
       <h1>🔥 Super <span>Streaming</span></h1>
       <p>Correos de verificación Netflix (vista rápida)</p>
+    </div>
+
+    <div class="ads-container">
+        <div class="ads-label">Anuncio</div>
+        <script async="async" data-cfasync="false" src="https://pl28653744.effectivegatecpm.com/8a7799c7f525d405dcfb1471a70d0b70/invoke.js"></script>
+        <div id="container-8a7799c7f525d405dcfb1471a70d0b70"></div>
     </div>
 
     <div class="panel">
@@ -205,13 +232,11 @@
         soundPlayed = true;
       }
 
-      // si ya llegó, frenamos el auto refresh
       if(timer){
         clearInterval(timer);
         timer = null;
       }
 
-      // Render tarjetas
       d.emails.forEach(e => {
         const card = document.createElement("div");
         card.className = "email";
@@ -234,22 +259,16 @@
         frameWrap.className = "frameWrap";
 
         const iframe = document.createElement("iframe");
-
-        // ✅ Permitir que links/botones abran en nueva pestaña
         iframe.setAttribute(
           "sandbox",
           "allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
         );
         iframe.setAttribute("referrerpolicy","no-referrer");
-
-        // ✅ Forzar target=_blank dentro del correo
         iframe.srcdoc = `<base target="_blank">${e.html || ""}`;
 
         frameWrap.appendChild(iframe);
-
         card.appendChild(head);
         card.appendChild(frameWrap);
-
         result.appendChild(card);
       });
 
