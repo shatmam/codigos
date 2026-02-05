@@ -49,42 +49,35 @@
       font-size: clamp(14px, 2.3vw, 16px);
     }
 
-    /* Contenedor del anuncio con ajuste para móviles */
+    /* CONTENEDOR DE ANUNCIO CORREGIDO */
     .ads-container {
       width: 100%;
       text-align: center;
       margin: 15px 0;
-      padding: 10px 5px;
+      padding: 10px 0;
       background: rgba(255,255,255,0.02);
       border-radius: var(--radius);
       border: 1px dashed var(--border);
-      overflow: hidden; /* Evita que el anuncio se salga del cuadro */
-    }
-
-    .ads-scaler {
-      display: flex;
-      justify-content: center;
-      width: 100%;
-    }
-
-    /* Si la pantalla es pequeña (celular), encogemos el anuncio */
-    @media (max-width: 480px) {
-      .ads-scaler {
-        transform: scale(0.85); /* Encoge el anuncio al 85% de su tamaño */
-        transform-origin: center top;
-      }
-      .ads-container {
-        max-height: 120px; /* Evita espacios vacíos grandes en móvil */
-      }
+      /* Garantizamos un espacio para que el script se cargue */
+      min-height: 120px; 
+      display: block;
     }
 
     .ads-label {
       font-size: 9px;
       color: var(--muted);
-      margin-bottom: 8px;
+      margin-bottom: 10px;
       text-transform: uppercase;
       letter-spacing: 1px;
       opacity: 0.6;
+    }
+
+    /* Asegura que el div de Adsterra ocupe el ancho disponible */
+    .ads-container div[id^="container-"] {
+      width: 100% !important;
+      max-width: 100vw !important;
+      margin: 0 auto !important;
+      overflow: hidden !important;
     }
 
     .panel{
@@ -200,10 +193,8 @@
 
     <div class="ads-container">
         <div class="ads-label">Anuncio</div>
-        <div class="ads-scaler">
-            <script async="async" data-cfasync="false" src="https://pl28653744.effectivegatecpm.com/8a7799c7f525d405dcfb1471a70d0b70/invoke.js"></script>
-            <div id="container-8a7799c7f525d405dcfb1471a70d0b70"></div>
-        </div>
+        <script async="async" data-cfasync="false" src="https://pl28653744.effectivegatecpm.com/8a7799c7f525d405dcfb1471a70d0b70/invoke.js"></script>
+        <div id="container-8a7799c7f525d405dcfb1471a70d0b70"></div>
     </div>
 
     <div class="panel">
