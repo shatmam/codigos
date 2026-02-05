@@ -35,49 +35,51 @@
 
     .hero{
       text-align:center;
-      padding: 26px 12px 10px;
+      padding: 30px 12px 10px;
     }
     .hero h1{
       margin:0;
-      font-size: clamp(26px, 4vw, 44px);
+      font-size: clamp(28px, 5vw, 44px);
       letter-spacing:.2px;
     }
     .hero h1 span{ color: var(--brand); }
-    .hero p{
-      margin: 8px 0 0;
-      color: var(--muted);
-      font-size: clamp(14px, 2.3vw, 16px);
-    }
 
-    /* CONTENEDOR DE ANUNCIO CORREGIDO */
-    .ads-container {
-      width: 100%;
-      text-align: center;
-      margin: 15px 0;
-      padding: 10px 0;
-      background: rgba(255,255,255,0.02);
+    /* BLOQUE DE INSTRUCCIONES MÚLTIPLES */
+    .mensaje-instruccion {
+      background: linear-gradient(145deg, var(--card), #1c213a);
+      border: 2px solid var(--brand);
       border-radius: var(--radius);
-      border: 1px dashed var(--border);
-      /* Garantizamos un espacio para que el script se cargue */
-      min-height: 120px; 
-      display: block;
+      padding: 20px;
+      margin: 20px 0;
+      text-align: left; /* Alineado a la izquierda para la lista */
+      box-shadow: var(--shadow);
     }
 
-    .ads-label {
-      font-size: 9px;
-      color: var(--muted);
-      margin-bottom: 10px;
+    .mensaje-instruccion h2 {
+      color: var(--brand);
+      font-size: 14px;
       text-transform: uppercase;
-      letter-spacing: 1px;
-      opacity: 0.6;
+      margin: 0 0 15px 0;
+      text-align: center;
+      letter-spacing: 2px;
     }
 
-    /* Asegura que el div de Adsterra ocupe el ancho disponible */
-    .ads-container div[id^="container-"] {
-      width: 100% !important;
-      max-width: 100vw !important;
-      margin: 0 auto !important;
-      overflow: hidden !important;
+    .instruccion-item {
+      font-size: clamp(15px, 4vw, 19px);
+      font-weight: 800;
+      color: var(--text);
+      margin-bottom: 12px;
+      text-transform: uppercase;
+      line-height: 1.3;
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+    }
+
+    .instruccion-item:last-child { margin-bottom: 0; }
+
+    .instruccion-item span {
+      color: var(--brand);
     }
 
     .panel{
@@ -85,8 +87,8 @@
       border: 1px solid var(--border);
       border-radius: var(--radius);
       box-shadow: var(--shadow);
-      padding: 14px;
-      margin-top: 14px;
+      padding: 16px;
+      margin-top: 10px;
     }
 
     .row{
@@ -98,33 +100,33 @@
     }
 
     .btn{
-      flex: 1 1 220px;
-      height: 46px;
+      flex: 1 1 200px;
+      height: 50px;
       border:none;
-      border-radius: 10px;
+      border-radius: 12px;
       background: var(--brand);
       color:#fff;
       font-weight: 800;
       font-size: 16px;
       cursor:pointer;
-      transition: transform .06s ease, opacity .2s ease;
+      transition: transform .06s ease, background .2s ease;
     }
-    .btn:active{ transform: scale(.99); }
-    .btn:hover{ opacity:.92; }
+    .btn:active{ transform: scale(.98); }
+    .btn:hover{ background: #ff0a16; }
 
     .status{
-      flex: 2 1 300px;
+      flex: 2 1 280px;
       text-align:left;
       color: var(--muted);
       font-size: 14px;
-      padding: 10px 12px;
-      border-radius: 10px;
-      background: rgba(255,255,255,.04);
+      padding: 12px 14px;
+      border-radius: 12px;
+      background: rgba(255,255,255,.03);
       border: 1px solid rgba(255,255,255,.06);
     }
 
     .emails{
-      margin-top: 14px;
+      margin-top: 16px;
       display:flex;
       flex-direction: column;
       gap: 14px;
@@ -139,7 +141,7 @@
     }
 
     .emailHead{
-      padding: 12px 14px;
+      padding: 14px;
       border-bottom: 1px solid rgba(255,255,255,.08);
     }
 
@@ -148,18 +150,17 @@
       font-size: 15px;
       margin:0 0 6px;
       word-break: break-word;
-      overflow-wrap:anywhere;
     }
+
     .meta{
       margin:0;
       color: var(--muted);
       font-size: 13px;
-      word-break: break-word;
-      overflow-wrap:anywhere;
     }
 
     .frameWrap{
       background:#fff;
+      width: 100%;
     }
 
     iframe{
@@ -167,19 +168,12 @@
       height: 520px;
       border: 0;
       display:block;
-      background:#fff;
     }
 
     @media (max-width: 768px){
       .wrap{ padding: 12px; }
-      .panel{ padding: 12px; }
-      .status{ font-size: 13px; }
-      iframe{ height: 560px; }
-    }
-
-    @media (max-width: 420px){
-      .btn{ font-size: 15px; }
-      iframe{ height: 620px; }
+      .hero{ padding: 20px 10px 10px; }
+      iframe{ height: 580px; }
     }
   </style>
 </head>
@@ -188,19 +182,19 @@
   <div class="wrap">
     <div class="hero">
       <h1>🔥 Super <span>Streaming</span></h1>
-      <p>Correos de verificación Netflix (vista rápida)</p>
     </div>
 
-    <div class="ads-container">
-        <div class="ads-label">Anuncio</div>
-        <script async="async" data-cfasync="false" src="https://pl28653744.effectivegatecpm.com/8a7799c7f525d405dcfb1471a70d0b70/invoke.js"></script>
-        <div id="container-8a7799c7f525d405dcfb1471a70d0b70"></div>
+    <div class="mensaje-instruccion">
+        <h2>Instrucciones</h2>
+        <div class="instruccion-item"><span>•</span> EN TU TV PRESIONA ESTOY DE VIAJE LUEGO ENVIAR EMAIL</div>
+        <div class="instruccion-item"><span>•</span> EN TU TV PRESIONA ACTUALIZAR HOGAR LUEGO ENVIAR EMAIL</div>
+        <div class="instruccion-item"><span>•</span> EN TU MOVIL PRESIONA VER TEMPORALMENTE LUEGO ENVIAR EMAIL</div>
     </div>
 
     <div class="panel">
       <div class="row">
-        <button class="btn" id="btn">📩 Ver correo</button>
-        <div class="status" id="status">⏳ Esperando acción…</div>
+        <button class="btn" id="btn">📩 BUSCAR CÓDIGO</button>
+        <div class="status" id="status">⏳ Listo para buscar...</div>
       </div>
       <div class="emails" id="result"></div>
     </div>
@@ -216,71 +210,46 @@
       const status = document.getElementById("status");
       const result = document.getElementById("result");
 
-      status.textContent = "🔍 Buscando correo...";
+      status.textContent = "🔍 Buscando en Gmail...";
       result.innerHTML = "";
 
-      let d;
       try{
         const res = await fetch("/api/emails", { cache: "no-store" });
-        d = await res.json();
+        const d = await res.json();
+
+        if(!d.emails || !d.emails.length){
+          status.textContent = "⏳ Esperando correo nuevo...";
+          auto();
+          return;
+        }
+
+        if(!soundPlayed){
+          document.getElementById("sound").play().catch(()=>{});
+          soundPlayed = true;
+        }
+
+        if(timer) { clearInterval(timer); timer = null; }
+
+        d.emails.forEach(e => {
+          const card = document.createElement("div");
+          card.className = "email";
+          card.innerHTML = `
+            <div class="emailHead">
+              <p class="subject">${e.subject || "(Sin asunto)"}</p>
+              <p class="meta">${e.from || ""} • ${e.date || ""}</p>
+            </div>
+            <div class="frameWrap">
+              <iframe sandbox="allow-same-origin allow-forms allow-popups" referrerpolicy="no-referrer" srcdoc='<base target="_blank">${e.html || ""}'></iframe>
+            </div>
+          `;
+          result.appendChild(card);
+        });
+
+        status.textContent = "✅ ¡Código encontrado!";
       } catch(e){
-        status.textContent = "❌ Error conectando al servidor";
+        status.textContent = "❌ Error de conexión";
         auto();
-        return;
       }
-
-      if(!d.emails || !d.emails.length){
-        status.textContent = "⏳ Esperando correo…";
-        auto();
-        return;
-      }
-
-      if(!soundPlayed){
-        document.getElementById("sound").play().catch(()=>{});
-        soundPlayed = true;
-      }
-
-      if(timer){
-        clearInterval(timer);
-        timer = null;
-      }
-
-      d.emails.forEach(e => {
-        const card = document.createElement("div");
-        card.className = "email";
-
-        const head = document.createElement("div");
-        head.className = "emailHead";
-
-        const subj = document.createElement("p");
-        subj.className = "subject";
-        subj.textContent = e.subject || "(Sin asunto)";
-
-        const meta = document.createElement("p");
-        meta.className = "meta";
-        meta.textContent = `${e.from || ""}${e.date ? " • " + e.date : ""}`;
-
-        head.appendChild(subj);
-        head.appendChild(meta);
-
-        const frameWrap = document.createElement("div");
-        frameWrap.className = "frameWrap";
-
-        const iframe = document.createElement("iframe");
-        iframe.setAttribute(
-          "sandbox",
-          "allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
-        );
-        iframe.setAttribute("referrerpolicy","no-referrer");
-        iframe.srcdoc = `<base target="_blank">${e.html || ""}`;
-
-        frameWrap.appendChild(iframe);
-        card.appendChild(head);
-        card.appendChild(frameWrap);
-        result.appendChild(card);
-      });
-
-      status.textContent = "✅ Correo cargado";
     }
 
     function auto(){
