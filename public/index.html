@@ -3,122 +3,222 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Página de Códigos</title>
+  <title>Super Streaming | Panel de Códigos</title>
   <style>
-    :root{
-      --bg:#0f1220;
-      --card:#161a2f;
-      --brand:#e50914;
-      --text:#ffffff;
-      --muted:#b9bfd6;
-      --border:#2a2f4a;
-      --radius:14px;
+    :root {
+      --bg: #0b0e1a;
+      --card: #161a2f;
+      --card-inner: #1c213a;
+      --brand: #e50914;
+      --text: #ffffff;
+      --muted: #b9bfd6;
+      --border: #2a2f4a;
+      --radius: 16px;
+      --shadow: 0 10px 30px rgba(0,0,0,0.5);
     }
-    body{
-      margin:0; background:var(--bg); color:var(--text);
-      font-family: system-ui, sans-serif; padding: 15px;
+
+    * { box-sizing: border-box; }
+    
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      padding: 20px 15px;
+      display: flex;
+      justify-content: center;
     }
+
+    .container {
+      width: 100%;
+      max-width: 600px;
+    }
+
+    /* CABECERA */
+    .hero {
+      text-align: center;
+      margin-bottom: 25px;
+    }
+    .hero h1 {
+      font-size: 28px;
+      margin: 0;
+      letter-spacing: 1px;
+    }
+    .hero span { color: var(--brand); font-weight: 900; }
+
+    /* INSTRUCCIONES ESTILO NEÓN */
     .instrucciones {
-      background: linear-gradient(145deg, var(--card), #1c213a);
-      border: 2px solid var(--brand); border-radius: var(--radius);
-      padding: 15px; margin-bottom: 20px;
+      background: var(--card);
+      border-left: 4px solid var(--brand);
+      border-radius: 12px;
+      padding: 15px;
+      margin-bottom: 25px;
+      box-shadow: var(--shadow);
     }
     .instruccion-item {
-      font-size: 14px; font-weight: 800; margin-bottom: 8px;
-      text-transform: uppercase; display: flex; gap: 10px;
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 10px;
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--muted);
     }
-    .instruccion-item span { color: var(--brand); }
-    .btn {
-      width: 100%; height: 55px; border:none; border-radius: 12px;
-      background: var(--brand); color:#fff; font-weight: 800;
-      font-size: 18px; cursor:pointer; margin-bottom: 10px;
-    }
-    .status { text-align: center; font-size: 13px; color: var(--muted); margin-bottom: 20px; }
-    
-    /* CONTENEDOR DE CORREO INYECTADO */
-    .email-card {
-      background: #ffffff; /* Fondo blanco para que el correo se lea bien */
-      color: #000000;
+    .instruccion-item:last-child { margin-bottom: 0; }
+    .instruccion-item b { color: var(--brand); font-size: 18px; }
+
+    /* PANEL DE ACCIÓN */
+    .panel {
+      background: var(--card);
       border-radius: var(--radius);
-      margin-top: 20px;
-      padding: 10px;
-      overflow: hidden;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+      padding: 20px;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
     }
-    .email-header-info {
+
+    .btn {
+      width: 100%;
+      height: 60px;
+      border: none;
+      border-radius: 12px;
+      background: var(--brand);
+      color: #fff;
+      font-weight: 800;
+      font-size: 18px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 15px rgba(229, 9, 20, 0.3);
+      margin-bottom: 15px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+    .btn:active { transform: scale(0.97); }
+    
+    .status {
+      text-align: center;
+      font-size: 14px;
+      color: var(--muted);
+      padding: 10px;
+      background: rgba(255,255,255,0.05);
+      border-radius: 8px;
+    }
+
+    /* TARJETA DE CORREO ESTILO "MODAL" */
+    .email-result {
+      margin-top: 25px;
+    }
+
+    .email-card {
+      background: #ffffff;
+      border-radius: var(--radius);
+      overflow: hidden;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+      animation: slideIn 0.4s ease-out;
+    }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .email-header {
       background: #10132b;
       color: white;
-      padding: 10px;
-      margin: -10px -10px 10px -10px;
-      font-size: 12px;
+      padding: 15px;
+      border-bottom: 2px solid var(--brand);
     }
-    /* Forzar que el contenido de Netflix sea responsivo */
-    .email-body-content * {
+    .email-header h3 { margin: 0; font-size: 15px; }
+    .email-header p { margin: 5px 0 0; font-size: 12px; color: var(--muted); }
+
+    /* CONTENEDOR DEL CONTENIDO INYECTADO */
+    .email-body {
+      padding: 10px;
+      color: #000; /* Asegura legibilidad sobre fondo blanco */
+    }
+
+    /* LIMPIEZA DE CONTENIDO NETFLIX */
+    .email-body * {
       max-width: 100% !important;
       height: auto !important;
       box-sizing: border-box !important;
     }
-    .email-body-content table {
+    .email-body table {
       width: 100% !important;
+      margin: 0 auto !important;
     }
   </style>
 </head>
 <body>
 
-  <div class="instrucciones">
-      <div class="instruccion-item"><span>•</span> EN TU TV PRESIONA ESTOY DE VIAJE LUEGO ENVIAR EMAIL</div>
-      <div class="instruccion-item"><span>•</span> EN TU TV PRESIONA ACTUALIZAR HOGAR LUEGO ENVIAR EMAIL</div>
-      <div class="instruccion-item"><span>•</span> EN TU MOVIL PRESIONA VER TEMPORALMENTE LUEGO ENVIAR EMAIL</div>
+<div class="container">
+  <div class="hero">
+    <h1>🚀 SUPER <span>STREAMING</span></h1>
   </div>
 
-  <button class="btn" id="btn">📩 BUSCAR CÓDIGO</button>
-  <div class="status" id="status">⏳ Listo para buscar...</div>
-  <div id="result"></div>
+  <div class="instrucciones">
+    <div class="instruccion-item"><b>•</b> EN TU TV: ESTOY DE VIAJE > ENVIAR EMAIL</div>
+    <div class="instruccion-item"><b>•</b> EN TU TV: ACTUALIZAR HOGAR > ENVIAR EMAIL</div>
+    <div class="instruccion-item"><b>•</b> MOVIL: VER TEMPORALMENTE > ENVIAR EMAIL</div>
+  </div>
 
-  <audio id="sound" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg"></audio>
+  <div class="panel">
+    <button class="btn" id="btn">📩 BUSCAR CÓDIGO NUEVO</button>
+    <div class="status" id="status">Esperando solicitud...</div>
+    
+    <div id="result" class="email-result"></div>
+  </div>
+</div>
 
-  <script>
-    async function buscar(){
-      const status = document.getElementById("status");
-      const result = document.getElementById("result");
-      status.textContent = "🔍 Buscando...";
-      
-      try{
-        const res = await fetch("/api/emails", { cache: "no-store" });
-        const d = await res.json();
+<audio id="sound" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg"></audio>
 
-        if(!d.emails || d.emails.length === 0){
-          status.textContent = "⏳ No hay correos nuevos aún...";
-          return;
-        }
+<script>
+  async function buscar() {
+    const status = document.getElementById("status");
+    const result = document.getElementById("result");
+    
+    status.innerHTML = "🔍 Buscando en el servidor...";
+    
+    try {
+      const res = await fetch("/api/emails", { cache: "no-store" });
+      const data = await res.json();
 
-        document.getElementById("sound").play().catch(()=>{});
-        result.innerHTML = "";
-
-        d.emails.forEach(e => {
-          const div = document.createElement("div");
-          div.className = "email-card";
-          
-          div.innerHTML = `
-            <div class="email-header-info">
-              <strong>Asunto:</strong> ${e.subject}<br>
-              <strong>Fecha:</strong> ${e.date}
-            </div>
-            <div class="email-body-content">
-              ${e.html}
-            </div>
-          `;
-          result.appendChild(div);
-        });
-
-        status.textContent = "✅ ¡Código cargado!";
-      } catch(e){
-        status.textContent = "❌ Error de conexión al servidor";
-        console.error(e);
+      if (!data.emails || data.emails.length === 0) {
+        status.innerHTML = "⏳ No hay correos nuevos aún. Intenta de nuevo.";
+        return;
       }
-    }
 
-    document.getElementById("btn").addEventListener("click", buscar);
-  </script>
+      document.getElementById("sound").play().catch(()=>{});
+      result.innerHTML = "";
+
+      data.emails.forEach(e => {
+        const card = document.createElement("div");
+        card.className = "email-card";
+        
+        card.innerHTML = `
+          <div class="email-header">
+            <h3>${e.subject}</h3>
+            <p>${e.date}</p>
+          </div>
+          <div class="email-body">
+            ${e.html}
+          </div>
+        `;
+        result.appendChild(card);
+      });
+
+      status.innerHTML = "✅ ¡Código cargado correctamente!";
+      
+    } catch (error) {
+      status.innerHTML = "❌ Error al conectar. Revisa tu internet.";
+      console.error(error);
+    }
+  }
+
+  document.getElementById("btn").addEventListener("click", buscar);
+</script>
+
 </body>
 </html>
