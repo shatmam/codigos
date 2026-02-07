@@ -2,9 +2,8 @@
 <html lang="es">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Página de Códigos</title>
-
   <style>
     :root{
       --bg:#0f1220;
@@ -15,74 +14,57 @@
       --border:#2a2f4a;
       --radius:14px;
     }
-
     body{
       margin:0; background:var(--bg); color:var(--text);
       font-family: system-ui, sans-serif; padding: 15px;
     }
-
     .instrucciones {
       background: linear-gradient(145deg, var(--card), #1c213a);
       border: 2px solid var(--brand); border-radius: var(--radius);
       padding: 15px; margin-bottom: 20px;
     }
-
     .instruccion-item {
       font-size: 14px; font-weight: 800; margin-bottom: 8px;
       text-transform: uppercase; display: flex; gap: 10px;
     }
     .instruccion-item span { color: var(--brand); }
-
     .btn {
       width: 100%; height: 55px; border:none; border-radius: 12px;
       background: var(--brand); color:#fff; font-weight: 800;
       font-size: 18px; cursor:pointer; margin-bottom: 10px;
     }
-
-    .status {
-      text-align: center; font-size: 13px; color: var(--muted);
-      margin-bottom: 20px;
-    }
-
-    /* EL TRUCO ESTÁ AQUÍ */
+    .status { text-align: center; font-size: 13px; color: var(--muted); margin-bottom: 20px; }
+    
+    /* CONTENEDOR DE CORREO INYECTADO */
     .email-card {
-      background: var(--card); border: 1px solid var(--border);
-      border-radius: var(--radius); margin-top: 20px; overflow: hidden;
-    }
-
-    .email-header {
-      padding: 12px; font-size: 14px; font-weight: bold;
-      border-bottom: 1px solid var(--border); background: #10132b;
-    }
-
-    .iframe-wrapper {
-      width: 100%;
-      height: 450px; /* Altura controlada */
-      background: #fff;
-      position: relative;
+      background: #ffffff; /* Fondo blanco para que el correo se lea bien */
+      color: #000000;
+      border-radius: var(--radius);
+      margin-top: 20px;
+      padding: 10px;
       overflow: hidden;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.5);
     }
-
-    iframe {
-      width: 600px; /* Ancho estándar de un correo de Netflix */
-      height: 800px;
-      border: 0;
-      position: absolute;
-      top: 0;
-      left: 50%;
-      /* Centramos el contenido y lo encogemos para que quepa en el móvil */
-      transform: translateX(-50%) scale(0.6); 
-      transform-origin: top center;
+    .email-header-info {
+      background: #10132b;
+      color: white;
+      padding: 10px;
+      margin: -10px -10px 10px -10px;
+      font-size: 12px;
     }
-
-    /* Si es una pantalla más grande (PC), el zoom es menor */
-    @media (min-width: 600px) {
-      iframe { transform: translateX(-50%) scale(1); }
+    /* Forzar que el contenido de Netflix sea responsivo */
+    .email-body-content * {
+      max-width: 100% !important;
+      height: auto !important;
+      box-sizing: border-box !important;
+    }
+    .email-body-content table {
+      width: 100% !important;
     }
   </style>
 </head>
-
 <body>
+
   <div class="instrucciones">
       <div class="instruccion-item"><span>•</span> EN TU TV PRESIONA ESTOY DE VIAJE LUEGO ENVIAR EMAIL</div>
       <div class="instruccion-item"><span>•</span> EN TU TV PRESIONA ACTUALIZAR HOGAR LUEGO ENVIAR EMAIL</div>
@@ -117,21 +99,22 @@
           const div = document.createElement("div");
           div.className = "email-card";
           
-          // Inyectamos un estilo para quitar el espacio en blanco de arriba que pone Netflix
-          const fixTop = `<style>body{margin:0 !important; padding:0 !important;} table{margin-top:-50px !important;}</style>`;
-
           div.innerHTML = `
-            <div class="email-header">${e.subject}</div>
-            <div class="iframe-wrapper">
-              <iframe srcdoc='${fixTop}${e.html}'></iframe>
+            <div class="email-header-info">
+              <strong>Asunto:</strong> ${e.subject}<br>
+              <strong>Fecha:</strong> ${e.date}
+            </div>
+            <div class="email-body-content">
+              ${e.html}
             </div>
           `;
           result.appendChild(div);
         });
 
-        status.textContent = "✅ ¡Código encontrado!";
+        status.textContent = "✅ ¡Código cargado!";
       } catch(e){
-        status.textContent = "❌ Error de conexión";
+        status.textContent = "❌ Error de conexión al servidor";
+        console.error(e);
       }
     }
 
