@@ -44,14 +44,14 @@
     }
     .hero h1 span{ color: var(--brand); }
 
-    /* BLOQUE DE INSTRUCCIONES MÚLTIPLES */
+    /* BLOQUE DE INSTRUCCIONES */
     .mensaje-instruccion {
       background: linear-gradient(145deg, var(--card), #1c213a);
       border: 2px solid var(--brand);
       border-radius: var(--radius);
       padding: 20px;
       margin: 20px 0;
-      text-align: left; /* Alineado a la izquierda para la lista */
+      text-align: left;
       box-shadow: var(--shadow);
     }
 
@@ -65,7 +65,7 @@
     }
 
     .instruccion-item {
-      font-size: clamp(15px, 4vw, 19px);
+      font-size: clamp(14px, 3.5vw, 18px);
       font-weight: 800;
       color: var(--text);
       margin-bottom: 12px;
@@ -76,11 +76,7 @@
       gap: 10px;
     }
 
-    .instruccion-item:last-child { margin-bottom: 0; }
-
-    .instruccion-item span {
-      color: var(--brand);
-    }
+    .instruccion-item span { color: var(--brand); }
 
     .panel{
       background: var(--card);
@@ -129,7 +125,7 @@
       margin-top: 16px;
       display:flex;
       flex-direction: column;
-      gap: 14px;
+      gap: 16px;
     }
 
     .email{
@@ -148,32 +144,34 @@
     .subject{
       font-weight: 800;
       font-size: 15px;
-      margin:0 0 6px;
+      margin:0 0 4px;
       word-break: break-word;
     }
 
     .meta{
       margin:0;
       color: var(--muted);
-      font-size: 13px;
+      font-size: 12px;
     }
 
+    /* CONTENEDOR DEL IFRAME CORREGIDO */
     .frameWrap{
-      background:#fff;
+      background: #ffffff;
       width: 100%;
+      overflow: hidden;
+      display: block;
     }
 
     iframe{
       width: 100%;
-      height: 520px;
+      height: 650px; /* Altura suficiente para ver el código */
       border: 0;
-      display:block;
+      display: block;
     }
 
     @media (max-width: 768px){
       .wrap{ padding: 12px; }
-      .hero{ padding: 20px 10px 10px; }
-      iframe{ height: 580px; }
+      iframe{ height: 600px; }
     }
   </style>
 </head>
@@ -233,13 +231,28 @@
         d.emails.forEach(e => {
           const card = document.createElement("div");
           card.className = "email";
+          
+          // Truco: Forzamos que el contenido del correo use el 100% del ancho del iframe
+          // y eliminamos márgenes innecesarios que cortan la vista en móviles
+          const responsiveFix = `
+            <style>
+              body { margin: 0; padding: 10px; font-family: sans-serif; overflow-x: hidden !important; }
+              table, div, p { max-width: 100% !important; width: 100% !important; box-sizing: border-box !important; }
+              img { max-width: 100% !important; height: auto !important; }
+            </style>
+          `;
+
           card.innerHTML = `
             <div class="emailHead">
               <p class="subject">${e.subject || "(Sin asunto)"}</p>
               <p class="meta">${e.from || ""} • ${e.date || ""}</p>
             </div>
             <div class="frameWrap">
-              <iframe sandbox="allow-same-origin allow-forms allow-popups" referrerpolicy="no-referrer" srcdoc='<base target="_blank">${e.html || ""}'></iframe>
+              <iframe 
+                sandbox="allow-same-origin allow-forms allow-popups" 
+                referrerpolicy="no-referrer" 
+                srcdoc='${responsiveFix}${e.html || "Sin contenido"}'>
+              </iframe>
             </div>
           `;
           result.appendChild(card);
