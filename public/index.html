@@ -30,18 +30,14 @@
     .wrap{
       max-width: 1100px;
       margin: 0 auto;
-      padding: 18px;
+      padding: 15px;
     }
 
     .hero{
       text-align:center;
-      padding: 30px 12px 10px;
+      padding: 20px 0;
     }
-    .hero h1{
-      margin:0;
-      font-size: clamp(28px, 5vw, 44px);
-      letter-spacing:.2px;
-    }
+    .hero h1{ margin:0; font-size: 32px; }
     .hero h1 span{ color: var(--brand); }
 
     .mensaje-instruccion {
@@ -49,24 +45,15 @@
       border: 2px solid var(--brand);
       border-radius: var(--radius);
       padding: 20px;
-      margin: 20px 0;
-      text-align: left;
+      margin-bottom: 20px;
       box-shadow: var(--shadow);
     }
 
-    .mensaje-instruccion h2 {
-      color: var(--brand);
-      font-size: 14px;
-      text-transform: uppercase;
-      margin: 0 0 15px 0;
-      text-align: center;
-    }
-
     .instruccion-item {
-      font-size: clamp(14px, 3.5vw, 17px);
+      font-size: 15px;
       font-weight: 800;
       color: var(--text);
-      margin-bottom: 12px;
+      margin-bottom: 10px;
       text-transform: uppercase;
       display: flex;
       gap: 10px;
@@ -78,74 +65,58 @@
       background: var(--card);
       border: 1px solid var(--border);
       border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      padding: 16px;
-    }
-
-    .row{
-      display:flex;
-      gap:12px;
-      flex-wrap: wrap;
-      margin-bottom: 15px;
+      padding: 15px;
     }
 
     .btn{
-      flex: 1 1 200px;
-      height: 50px;
+      width: 100%;
+      height: 55px;
       border:none;
       border-radius: 12px;
       background: var(--brand);
       color:#fff;
       font-weight: 800;
-      font-size: 16px;
+      font-size: 18px;
       cursor:pointer;
+      margin-bottom: 15px;
     }
 
     .status{
-      flex: 2 1 280px;
       color: var(--muted);
       font-size: 14px;
-      padding: 12px 14px;
-      border-radius: 12px;
-      background: rgba(255,255,255,.03);
-      border: 1px solid rgba(255,255,255,.06);
+      text-align: center;
+      padding: 10px;
+      background: rgba(255,255,255,.05);
+      border-radius: 10px;
     }
 
+    /* CONTENEDOR RESPONSIVO REAL */
     .email{
-      background: var(--card2);
-      border: 1px solid var(--border);
+      background: #fff; /* Fondo blanco para el correo */
       border-radius: var(--radius);
-      margin-top: 15px;
+      margin-top: 20px;
       overflow: hidden;
+      border: 1px solid var(--border);
     }
 
-    .emailHead{
-      padding: 14px;
-      border-bottom: 1px solid rgba(255,255,255,.08);
+    .email-header {
+      background: var(--card2);
+      padding: 12px;
+      color: white;
+      border-bottom: 1px solid var(--border);
     }
 
-    /* CONTENEDOR CON ZOOM */
-    .frameWrap {
+    .frame-container {
       width: 100%;
-      height: 500px;
-      background: white;
-      overflow: hidden;
-      position: relative;
+      overflow-x: auto; /* Permite scroll horizontal si falla todo lo demás */
+      -webkit-overflow-scrolling: touch;
     }
 
     iframe {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100vw; /* Forzamos ancho de escritorio */
-      height: 100vh;
+      width: 100%;
+      min-height: 550px;
       border: 0;
-      transform-origin: 0 0;
-      /* Este zoom se ajustará por JS */
-    }
-
-    @media (max-width: 768px){
-      .wrap{ padding: 10px; }
+      display: block;
     }
   </style>
 </head>
@@ -157,17 +128,14 @@
     </div>
 
     <div class="mensaje-instruccion">
-        <h2>Instrucciones</h2>
         <div class="instruccion-item"><span>•</span> EN TU TV PRESIONA ESTOY DE VIAJE LUEGO ENVIAR EMAIL</div>
         <div class="instruccion-item"><span>•</span> EN TU TV PRESIONA ACTUALIZAR HOGAR LUEGO ENVIAR EMAIL</div>
         <div class="instruccion-item"><span>•</span> EN TU MOVIL PRESIONA VER TEMPORALMENTE LUEGO ENVIAR EMAIL</div>
     </div>
 
     <div class="panel">
-      <div class="row">
-        <button class="btn" id="btn">📩 BUSCAR CÓDIGO</button>
-        <div class="status" id="status">⏳ Listo para buscar...</div>
-      </div>
+      <button class="btn" id="btn">📩 BUSCAR CÓDIGO</button>
+      <div class="status" id="status">⏳ Listo para buscar...</div>
       <div id="result"></div>
     </div>
   </div>
@@ -175,8 +143,6 @@
   <audio id="sound" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" preload="auto"></audio>
 
   <script>
-    let timer = null;
-
     async function buscar(){
       const status = document.getElementById("status");
       const result = document.getElementById("result");
@@ -187,8 +153,7 @@
         const d = await res.json();
 
         if(!d.emails || !d.emails.length){
-          status.textContent = "⏳ No hay correos nuevos...";
-          auto();
+          status.textContent = "⏳ Esperando correo nuevo...";
           return;
         }
 
@@ -199,45 +164,32 @@
           const card = document.createElement("div");
           card.className = "email";
           
-          // Inyectamos CSS para normalizar el correo
-          const cleanCSS = `<style>body{margin:0;padding:0;background:#fff;}</style>`;
-          
+          // INYECTAMOS CSS AGRESIVO PARA ROMPER EL ANCHO FIJO DE NETFLIX
+          const superFix = `
+            <style>
+              * { max-width: 100% !important; box-sizing: border-box !important; }
+              body { margin: 0; padding: 10px; width: 100% !important; min-width: 100% !important; }
+              table { width: 100% !important; table-layout: fixed !important; }
+              img { height: auto !important; max-width: 100% !important; }
+              .shell { width: 100% !important; }
+            </style>
+          `;
+
           card.innerHTML = `
-            <div class="emailHead">
-              <p style="margin:0;font-weight:bold;color:#fff;">${e.subject}</p>
-              <p style="margin:5px 0 0;font-size:12px;color:#b9bfd6;">${e.date}</p>
+            <div class="email-header">
+              <div style="font-weight:bold; font-size:14px;">${e.subject}</div>
             </div>
-            <div class="frameWrap">
-              <iframe class="mail-frame" srcdoc='${cleanCSS}${e.html}'></iframe>
+            <div class="frame-container">
+              <iframe srcdoc='${superFix}${e.html}'></iframe>
             </div>
           `;
           result.appendChild(card);
-          
-          // AJUSTE DINÁMICO DE ZOOM
-          const frame = card.querySelector('.mail-frame');
-          frame.onload = () => {
-             const zoom = card.offsetWidth / 600; // 600px es el ancho estándar de Netflix
-             if(zoom < 1) {
-                frame.style.width = (100 / zoom) + "%";
-                frame.style.height = (500 / zoom) + "px";
-                frame.style.transform = `scale(${zoom})`;
-             } else {
-                frame.style.width = "100%";
-                frame.style.height = "500px";
-             }
-          };
         });
 
-        status.textContent = "✅ ¡Listo!";
+        status.textContent = "✅ ¡Código encontrado!";
       } catch(e){
-        status.textContent = "❌ Error";
-        auto();
+        status.textContent = "❌ Error de conexión";
       }
-    }
-
-    function auto(){
-      if(timer) return;
-      timer = setInterval(buscar, 10000);
     }
 
     document.getElementById("btn").addEventListener("click", buscar);
