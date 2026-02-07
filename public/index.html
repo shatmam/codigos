@@ -44,7 +44,6 @@
     }
     .hero h1 span{ color: var(--brand); }
 
-    /* BLOQUE DE INSTRUCCIONES */
     .mensaje-instruccion {
       background: linear-gradient(145deg, var(--card), #1c213a);
       border: 2px solid var(--brand);
@@ -61,18 +60,15 @@
       text-transform: uppercase;
       margin: 0 0 15px 0;
       text-align: center;
-      letter-spacing: 2px;
     }
 
     .instruccion-item {
-      font-size: clamp(14px, 3.5vw, 18px);
+      font-size: clamp(14px, 3.5vw, 17px);
       font-weight: 800;
       color: var(--text);
       margin-bottom: 12px;
       text-transform: uppercase;
-      line-height: 1.3;
       display: flex;
-      align-items: flex-start;
       gap: 10px;
     }
 
@@ -84,15 +80,13 @@
       border-radius: var(--radius);
       box-shadow: var(--shadow);
       padding: 16px;
-      margin-top: 10px;
     }
 
     .row{
       display:flex;
       gap:12px;
       flex-wrap: wrap;
-      align-items:center;
-      justify-content: space-between;
+      margin-bottom: 15px;
     }
 
     .btn{
@@ -105,14 +99,10 @@
       font-weight: 800;
       font-size: 16px;
       cursor:pointer;
-      transition: transform .06s ease, background .2s ease;
     }
-    .btn:active{ transform: scale(.98); }
-    .btn:hover{ background: #ff0a16; }
 
     .status{
       flex: 2 1 280px;
-      text-align:left;
       color: var(--muted);
       font-size: 14px;
       padding: 12px 14px;
@@ -121,19 +111,12 @@
       border: 1px solid rgba(255,255,255,.06);
     }
 
-    .emails{
-      margin-top: 16px;
-      display:flex;
-      flex-direction: column;
-      gap: 16px;
-    }
-
     .email{
       background: var(--card2);
       border: 1px solid var(--border);
       border-radius: var(--radius);
-      overflow:hidden;
-      box-shadow: var(--shadow);
+      margin-top: 15px;
+      overflow: hidden;
     }
 
     .emailHead{
@@ -141,37 +124,28 @@
       border-bottom: 1px solid rgba(255,255,255,.08);
     }
 
-    .subject{
-      font-weight: 800;
-      font-size: 15px;
-      margin:0 0 4px;
-      word-break: break-word;
-    }
-
-    .meta{
-      margin:0;
-      color: var(--muted);
-      font-size: 12px;
-    }
-
-    /* CONTENEDOR DEL IFRAME CORREGIDO */
-    .frameWrap{
-      background: #ffffff;
+    /* CONTENEDOR CON ZOOM */
+    .frameWrap {
       width: 100%;
+      height: 500px;
+      background: white;
       overflow: hidden;
-      display: block;
+      position: relative;
     }
 
-    iframe{
-      width: 100%;
-      height: 650px; /* Altura suficiente para ver el código */
+    iframe {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100vw; /* Forzamos ancho de escritorio */
+      height: 100vh;
       border: 0;
-      display: block;
+      transform-origin: 0 0;
+      /* Este zoom se ajustará por JS */
     }
 
     @media (max-width: 768px){
-      .wrap{ padding: 12px; }
-      iframe{ height: 600px; }
+      .wrap{ padding: 10px; }
     }
   </style>
 </head>
@@ -194,7 +168,7 @@
         <button class="btn" id="btn">📩 BUSCAR CÓDIGO</button>
         <div class="status" id="status">⏳ Listo para buscar...</div>
       </div>
-      <div class="emails" id="result"></div>
+      <div id="result"></div>
     </div>
   </div>
 
@@ -202,65 +176,61 @@
 
   <script>
     let timer = null;
-    let soundPlayed = false;
 
     async function buscar(){
       const status = document.getElementById("status");
       const result = document.getElementById("result");
-
-      status.textContent = "🔍 Buscando en Gmail...";
-      result.innerHTML = "";
-
+      status.textContent = "🔍 Buscando...";
+      
       try{
         const res = await fetch("/api/emails", { cache: "no-store" });
         const d = await res.json();
 
         if(!d.emails || !d.emails.length){
-          status.textContent = "⏳ Esperando correo nuevo...";
+          status.textContent = "⏳ No hay correos nuevos...";
           auto();
           return;
         }
 
-        if(!soundPlayed){
-          document.getElementById("sound").play().catch(()=>{});
-          soundPlayed = true;
-        }
-
-        if(timer) { clearInterval(timer); timer = null; }
+        document.getElementById("sound").play().catch(()=>{});
+        result.innerHTML = "";
 
         d.emails.forEach(e => {
           const card = document.createElement("div");
           card.className = "email";
           
-          // Truco: Forzamos que el contenido del correo use el 100% del ancho del iframe
-          // y eliminamos márgenes innecesarios que cortan la vista en móviles
-          const responsiveFix = `
-            <style>
-              body { margin: 0; padding: 10px; font-family: sans-serif; overflow-x: hidden !important; }
-              table, div, p { max-width: 100% !important; width: 100% !important; box-sizing: border-box !important; }
-              img { max-width: 100% !important; height: auto !important; }
-            </style>
-          `;
-
+          // Inyectamos CSS para normalizar el correo
+          const cleanCSS = `<style>body{margin:0;padding:0;background:#fff;}</style>`;
+          
           card.innerHTML = `
             <div class="emailHead">
-              <p class="subject">${e.subject || "(Sin asunto)"}</p>
-              <p class="meta">${e.from || ""} • ${e.date || ""}</p>
+              <p style="margin:0;font-weight:bold;color:#fff;">${e.subject}</p>
+              <p style="margin:5px 0 0;font-size:12px;color:#b9bfd6;">${e.date}</p>
             </div>
             <div class="frameWrap">
-              <iframe 
-                sandbox="allow-same-origin allow-forms allow-popups" 
-                referrerpolicy="no-referrer" 
-                srcdoc='${responsiveFix}${e.html || "Sin contenido"}'>
-              </iframe>
+              <iframe class="mail-frame" srcdoc='${cleanCSS}${e.html}'></iframe>
             </div>
           `;
           result.appendChild(card);
+          
+          // AJUSTE DINÁMICO DE ZOOM
+          const frame = card.querySelector('.mail-frame');
+          frame.onload = () => {
+             const zoom = card.offsetWidth / 600; // 600px es el ancho estándar de Netflix
+             if(zoom < 1) {
+                frame.style.width = (100 / zoom) + "%";
+                frame.style.height = (500 / zoom) + "px";
+                frame.style.transform = `scale(${zoom})`;
+             } else {
+                frame.style.width = "100%";
+                frame.style.height = "500px";
+             }
+          };
         });
 
-        status.textContent = "✅ ¡Código encontrado!";
+        status.textContent = "✅ ¡Listo!";
       } catch(e){
-        status.textContent = "❌ Error de conexión";
+        status.textContent = "❌ Error";
         auto();
       }
     }
