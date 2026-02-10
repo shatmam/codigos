@@ -8,7 +8,6 @@
     :root {
       --bg: #0b0e1a;
       --card: #161a2f;
-      --card-inner: #1c213a;
       --brand: #e50914;
       --text: #ffffff;
       --muted: #b9bfd6;
@@ -23,7 +22,7 @@
       margin: 0;
       background: var(--bg);
       color: var(--text);
-      font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      font-family: 'Segoe UI', system-ui, sans-serif;
       padding: 20px 15px;
       display: flex;
       justify-content: center;
@@ -31,28 +30,19 @@
 
     .container {
       width: 100%;
-      max-width: 600px;
+      max-width: 650px;
     }
 
-    /* CABECERA */
-    .hero {
-      text-align: center;
-      margin-bottom: 25px;
-    }
-    .hero h1 {
-      font-size: 28px;
-      margin: 0;
-      letter-spacing: 1px;
-    }
+    .hero { text-align: center; margin-bottom: 20px; }
+    .hero h1 { font-size: 28px; margin: 0; letter-spacing: 1px; }
     .hero span { color: var(--brand); font-weight: 900; }
 
-    /* INSTRUCCIONES ESTILO NEÓN */
     .instrucciones {
       background: var(--card);
       border-left: 4px solid var(--brand);
       border-radius: 12px;
       padding: 15px;
-      margin-bottom: 25px;
+      margin-bottom: 20px;
       box-shadow: var(--shadow);
     }
     .instruccion-item {
@@ -65,10 +55,25 @@
       gap: 10px;
       color: var(--muted);
     }
-    .instruccion-item:last-child { margin-bottom: 0; }
     .instruccion-item b { color: var(--brand); font-size: 18px; }
 
-    /* PANEL DE ACCIÓN */
+    /* CONTENEDOR DE PUBLICIDAD CENTRADO */
+    .ad-container {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin: 15px 0 25px 0;
+      min-height: 60px;
+    }
+    .ad-label {
+      font-size: 9px;
+      color: #333;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+      letter-spacing: 1px;
+    }
+
     .panel {
       background: var(--card);
       border-radius: var(--radius);
@@ -88,12 +93,8 @@
       font-size: 18px;
       cursor: pointer;
       transition: all 0.2s ease;
-      box-shadow: 0 4px 15px rgba(229, 9, 20, 0.3);
       margin-bottom: 15px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
+      box-shadow: 0 4px 15px rgba(229, 9, 20, 0.2);
     }
     .btn:active { transform: scale(0.97); }
     
@@ -106,23 +107,16 @@
       border-radius: 8px;
     }
 
-    /* TARJETA DE CORREO ESTILO "MODAL" */
-    .email-result {
-      margin-top: 25px;
-    }
-
     .email-card {
       background: #ffffff;
       border-radius: var(--radius);
       overflow: hidden;
+      margin-top: 25px;
       box-shadow: 0 20px 40px rgba(0,0,0,0.6);
-      animation: slideIn 0.4s ease-out;
+      animation: fadeIn 0.4s ease;
     }
 
-    @keyframes slideIn {
-      from { opacity: 0; transform: translateY(20px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
     .email-header {
       background: #10132b;
@@ -130,25 +124,10 @@
       padding: 15px;
       border-bottom: 2px solid var(--brand);
     }
-    .email-header h3 { margin: 0; font-size: 15px; }
-    .email-header p { margin: 5px 0 0; font-size: 12px; color: var(--muted); }
 
-    /* CONTENEDOR DEL CONTENIDO INYECTADO */
-    .email-body {
-      padding: 10px;
-      color: #000; /* Asegura legibilidad sobre fondo blanco */
-    }
-
-    /* LIMPIEZA DE CONTENIDO NETFLIX */
-    .email-body * {
-      max-width: 100% !important;
-      height: auto !important;
-      box-sizing: border-box !important;
-    }
-    .email-body table {
-      width: 100% !important;
-      margin: 0 auto !important;
-    }
+    .email-body { padding: 10px; color: #000; }
+    .email-body * { max-width: 100% !important; height: auto !important; box-sizing: border-box !important; }
+    .email-body table { width: 100% !important; margin: 0 auto !important; }
   </style>
 </head>
 <body>
@@ -164,11 +143,24 @@
     <div class="instruccion-item"><b>•</b> MOVIL: VER TEMPORALMENTE > ENVIAR EMAIL</div>
   </div>
 
+  <div class="ad-container">
+    <div class="ad-label">Publicidad</div>
+    <script type="text/javascript">
+      atOptions = {
+        'key' : 'cceca146ecc06005e59390960db3af7f',
+        'format' : 'iframe',
+        'height' : 50,
+        'width' : 320,
+        'params' : {}
+      };
+    </script>
+    <script type="text/javascript" src="https://www.highperformanceformat.com/cceca146ecc06005e59390960db3af7f/invoke.js"></script>
+  </div>
+
   <div class="panel">
     <button class="btn" id="btn">📩 BUSCAR CÓDIGO NUEVO</button>
     <div class="status" id="status">Esperando solicitud...</div>
-    
-    <div id="result" class="email-result"></div>
+    <div id="result"></div>
   </div>
 </div>
 
@@ -178,45 +170,27 @@
   async function buscar() {
     const status = document.getElementById("status");
     const result = document.getElementById("result");
-    
     status.innerHTML = "🔍 Buscando en el servidor...";
-    
     try {
       const res = await fetch("/api/emails", { cache: "no-store" });
       const data = await res.json();
-
       if (!data.emails || data.emails.length === 0) {
-        status.innerHTML = "⏳ No hay correos nuevos aún. Intenta de nuevo.";
+        status.innerHTML = "⏳ No hay correos nuevos aún. Reintenta.";
         return;
       }
-
       document.getElementById("sound").play().catch(()=>{});
       result.innerHTML = "";
-
       data.emails.forEach(e => {
         const card = document.createElement("div");
         card.className = "email-card";
-        
-        card.innerHTML = `
-          <div class="email-header">
-            <h3>${e.subject}</h3>
-            <p>${e.date}</p>
-          </div>
-          <div class="email-body">
-            ${e.html}
-          </div>
-        `;
+        card.innerHTML = `<div class="email-header"><h3>${e.subject}</h3><p>${e.date}</p></div><div class="email-body">${e.html}</div>`;
         result.appendChild(card);
       });
-
-      status.innerHTML = "✅ ¡Código cargado correctamente!";
-      
+      status.innerHTML = "✅ ¡Código cargado!";
     } catch (error) {
-      status.innerHTML = "❌ Error al conectar. Revisa tu internet.";
-      console.error(error);
+      status.innerHTML = "❌ Error de conexión.";
     }
   }
-
   document.getElementById("btn").addEventListener("click", buscar);
 </script>
 
