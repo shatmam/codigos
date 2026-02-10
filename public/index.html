@@ -30,18 +30,14 @@
     .ad-top, .ad-bottom {
       width: 100%;
       display: flex;
+      flex-direction: column;
+      align-items: center;
       justify-content: center;
       min-height: 60px;
       overflow: hidden;
     }
-    .ad-top { margin: 5px 0 15px 0; }
-    .ad-bottom { margin: 25px 0 10px 0; border-top: 1px dashed var(--border); padding-top: 15px; }
-
-    /* Ajuste para que no tape tanto */
-    #container-8a7799c7f525d405dcfb1471a70d0b70 {
-      transform: scale(0.9);
-      transform-origin: center top;
-    }
+    .ad-top { margin-bottom: 15px; }
+    .ad-bottom { margin-top: 25px; padding-top: 15px; border-top: 1px solid var(--border); }
 
     .instrucciones {
       background: var(--card); border-left: 3px solid var(--brand);
@@ -70,9 +66,8 @@
       background: #ffffff; border-radius: var(--radius); overflow: hidden;
       margin-top: 20px; box-shadow: 0 15px 30px rgba(0,0,0,0.5);
     }
-    .email-header { background: #10132b; color: white; padding: 12px; font-size: 13px; border-bottom: 2px solid var(--brand); }
+    .email-header { background: #10132b; color: white; padding: 12px; font-size: 13px; }
     .email-body { padding: 10px; color: #000; }
-    .email-body * { max-width: 100% !important; height: auto !important; }
   </style>
 </head>
 <body>
@@ -100,7 +95,16 @@
   </div>
 
   <div class="ad-bottom">
-    <div id="container-8a7799c7f525d405dcfb1471a70d0b70"></div>
+    <script type="text/javascript">
+      atOptions = {
+        'key' : 'cceca146ecc06005e59390960db3af7f',
+        'format' : 'iframe',
+        'height' : 50,
+        'width' : 320,
+        'params' : {}
+      };
+    </script>
+    <script type="text/javascript" src="https://www.highperformanceformat.com/cceca146ecc06005e59390960db3af7f/invoke.js"></script>
   </div>
 </div>
 
@@ -127,7 +131,7 @@
         result.appendChild(card);
       });
       status.innerHTML = "✅ ¡Listo!";
-    } catch (e) { status.innerHTML = "❌ Error de red."; }
+    } catch (e) { status.innerHTML = "❌ Error."; }
   }
   document.getElementById("btn").addEventListener("click", buscar);
 </script>
