@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>Super Streaming</title>
+  <title>Super Streaming | Panel VIP</title>
   <style>
     :root {
       --bg: #0b0e1a;
@@ -17,59 +17,61 @@
     *{ box-sizing: border-box; }
     body {
       margin: 0; background: var(--bg); color: var(--text);
-      font-family: 'Segoe UI', sans-serif; padding: 10px;
+      font-family: 'Segoe UI', system-ui, sans-serif; padding: 10px;
       display: flex; justify-content: center;
     }
     .container { width: 100%; max-width: 500px; }
     
-    .hero { text-align: center; margin-bottom: 5px; }
-    .hero h1 { font-size: 20px; margin: 0; }
+    .hero { text-align: center; margin: 10px 0; }
+    .hero h1 { font-size: 22px; margin: 0; }
     .hero span { color: var(--brand); font-weight: 900; }
 
-    /* PUBLICIDAD COMPACTA */
-    .top-ad {
+    /* CONTENEDORES DE PUBLICIDAD */
+    .ad-top, .ad-bottom {
       width: 100%;
       display: flex;
       justify-content: center;
-      margin: 5px 0 10px 0; /* Margen muy reducido */
-      min-height: 50px;
+      min-height: 60px;
       overflow: hidden;
     }
+    .ad-top { margin: 5px 0 15px 0; }
+    .ad-bottom { margin: 25px 0 10px 0; border-top: 1px dashed var(--border); padding-top: 15px; }
+
+    /* Ajuste para que no tape tanto */
     #container-8a7799c7f525d405dcfb1471a70d0b70 {
-      transform: scale(0.85); /* Reducimos el tamaño un 15% */
+      transform: scale(0.9);
       transform-origin: center top;
-      max-height: 55px;
     }
 
     .instrucciones {
       background: var(--card); border-left: 3px solid var(--brand);
-      border-radius: 10px; padding: 10px; margin-bottom: 12px;
+      border-radius: 10px; padding: 12px; margin-bottom: 15px;
     }
     .instruccion-item {
-      font-size: 10.5px; font-weight: 700; margin-bottom: 5px;
-      text-transform: uppercase; display: flex; align-items: center; gap: 6px; color: var(--muted);
+      font-size: 11px; font-weight: 700; margin-bottom: 6px;
+      text-transform: uppercase; display: flex; align-items: center; gap: 8px; color: var(--muted);
     }
 
     .panel {
       background: var(--card); border-radius: var(--radius);
-      padding: 15px; border: 1px solid var(--border);
+      padding: 18px; border: 1px solid var(--border);
     }
     .btn {
-      width: 100%; height: 50px; border: none; border-radius: 10px;
-      background: var(--brand); color: #fff; font-weight: 800; font-size: 16px;
-      cursor: pointer; margin-bottom: 10px;
+      width: 100%; height: 55px; border: none; border-radius: 12px;
+      background: var(--brand); color: #fff; font-weight: 800; font-size: 17px;
+      cursor: pointer; margin-bottom: 12px;
     }
     .status {
-      text-align: center; font-size: 12px; color: var(--muted);
-      padding: 6px; background: rgba(255,255,255,0.05); border-radius: 6px;
+      text-align: center; font-size: 13px; color: var(--muted);
+      padding: 8px; background: rgba(255,255,255,0.05); border-radius: 8px;
     }
 
     .email-card {
       background: #ffffff; border-radius: var(--radius); overflow: hidden;
-      margin-top: 15px; box-shadow: 0 10px 20px rgba(0,0,0,0.4);
+      margin-top: 20px; box-shadow: 0 15px 30px rgba(0,0,0,0.5);
     }
-    .email-header { background: #10132b; color: white; padding: 10px; font-size: 12px; }
-    .email-body { padding: 10px; color: #000; font-size: 13px; }
+    .email-header { background: #10132b; color: white; padding: 12px; font-size: 13px; border-bottom: 2px solid var(--brand); }
+    .email-body { padding: 10px; color: #000; }
     .email-body * { max-width: 100% !important; height: auto !important; }
   </style>
 </head>
@@ -80,7 +82,7 @@
     <h1>🚀 SUPER <span>STREAMING</span></h1>
   </div>
 
-  <div class="top-ad">
+  <div class="ad-top">
     <script async="async" data-cfasync="false" src="https://pl28653744.effectivegatecpm.com/8a7799c7f525d405dcfb1471a70d0b70/invoke.js"></script>
     <div id="container-8a7799c7f525d405dcfb1471a70d0b70"></div>
   </div>
@@ -92,9 +94,13 @@
   </div>
 
   <div class="panel">
-    <button class="btn" id="btn">📩 BUSCAR CÓDIGO</button>
-    <div class="status" id="status">Esperando...</div>
+    <button class="btn" id="btn">📩 BUSCAR CÓDIGO NUEVO</button>
+    <div class="status" id="status">Esperando solicitud...</div>
     <div id="result"></div>
+  </div>
+
+  <div class="ad-bottom">
+    <div id="container-8a7799c7f525d405dcfb1471a70d0b70"></div>
   </div>
 </div>
 
@@ -109,7 +115,7 @@
       const res = await fetch("/api/emails", { cache: "no-store" });
       const data = await res.json();
       if (!data.emails || data.emails.length === 0) {
-        status.innerHTML = "⏳ No hay correos.";
+        status.innerHTML = "⏳ No hay correos nuevos.";
         return;
       }
       document.getElementById("sound").play().catch(()=>{});
@@ -121,7 +127,7 @@
         result.appendChild(card);
       });
       status.innerHTML = "✅ ¡Listo!";
-    } catch (e) { status.innerHTML = "❌ Error."; }
+    } catch (e) { status.innerHTML = "❌ Error de red."; }
   }
   document.getElementById("btn").addEventListener("click", buscar);
 </script>
