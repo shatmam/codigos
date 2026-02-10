@@ -2,8 +2,8 @@
 <html lang="es">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Super Streaming | Panel de Códigos</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Super Streaming | Códigos</title>
   <style>
     :root {
       --bg: #0b0e1a;
@@ -14,101 +14,62 @@
       --border: #2a2f4a;
       --radius: 16px;
     }
-
-    * { box-sizing: border-box; }
-    
+    *{ box-sizing: border-box; }
     body {
-      margin: 0;
-      background: var(--bg);
-      color: var(--text);
-      font-family: 'Segoe UI', system-ui, sans-serif;
-      padding: 15px;
-      display: flex;
-      justify-content: center;
+      margin: 0; background: var(--bg); color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif; padding: 10px;
+      display: flex; justify-content: center;
     }
-
-    .container { width: 100%; max-width: 650px; }
-
-    .hero { text-align: center; margin-bottom: 20px; }
-    .hero h1 { font-size: 26px; margin: 0; }
+    .container { width: 100%; max-width: 600px; }
+    
+    .hero { text-align: center; margin-top: 5px; margin-bottom: 10px; }
+    .hero h1 { font-size: 22px; margin: 0; letter-spacing: 1px; }
     .hero span { color: var(--brand); font-weight: 900; }
 
-    .instrucciones {
-      background: var(--card);
-      border-left: 4px solid var(--brand);
-      border-radius: 12px;
-      padding: 15px;
-      margin-bottom: 15px;
-    }
-    .instruccion-item {
-      font-size: 12px;
-      font-weight: 700;
-      margin-bottom: 8px;
-      text-transform: uppercase;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      color: var(--muted);
-    }
-    .instruccion-item b { color: var(--brand); }
-
-    /* CONTENEDOR PUBLICIDAD RESPONSIVO FORZADO */
-    .ad-wrapper {
+    /* PUBLICIDAD PEQUEÑA ARRIBA */
+    .top-ad {
       width: 100%;
-      margin: 15px 0;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      min-height: 60px; /* Altura mínima para que el script tenga espacio */
-      overflow: hidden;
+      margin-bottom: 15px;
+      min-height: 55px;
+    }
+    #container-8a7799c7f525d405dcfb1471a70d0b70 {
+      transform: scale(0.9); /* Un pelín más pequeña para que sea discreta */
     }
 
-    #container-8a7799c7f525d405dcfb1471a70d0b70 {
-      width: 100% !important;
-      max-width: 320px !important; /* Tamaño estándar de banner móvil */
-      margin: 0 auto;
+    .instrucciones {
+      background: var(--card); border-left: 4px solid var(--brand);
+      border-radius: 12px; padding: 12px; margin-bottom: 15px;
+    }
+    .instruccion-item {
+      font-size: 11px; font-weight: 700; margin-bottom: 6px;
+      text-transform: uppercase; display: flex; align-items: center; gap: 8px; color: var(--muted);
     }
 
     .panel {
-      background: var(--card);
-      border-radius: var(--radius);
-      padding: 20px;
-      border: 1px solid var(--border);
+      background: var(--card); border-radius: var(--radius);
+      padding: 18px; border: 1px solid var(--border);
     }
-
     .btn {
-      width: 100%;
-      height: 60px;
-      border: none;
-      border-radius: 12px;
-      background: var(--brand);
-      color: #fff;
-      font-weight: 800;
-      font-size: 18px;
-      cursor: pointer;
-      margin-bottom: 15px;
+      width: 100%; height: 55px; border: none; border-radius: 12px;
+      background: var(--brand); color: #fff; font-weight: 800; font-size: 17px;
+      cursor: pointer; margin-bottom: 12px;
     }
-    
     .status {
-      text-align: center;
-      font-size: 14px;
-      color: var(--muted);
-      padding: 10px;
-      background: rgba(255,255,255,0.05);
-      border-radius: 8px;
+      text-align: center; font-size: 13px; color: var(--muted);
+      padding: 8px; background: rgba(255,255,255,0.05); border-radius: 8px;
     }
 
     .email-card {
-      background: #ffffff;
-      border-radius: var(--radius);
-      overflow: hidden;
-      margin-top: 20px;
-      color: #000;
+      background: #ffffff; border-radius: var(--radius); overflow: hidden;
+      margin-top: 20px; box-shadow: 0 15px 30px rgba(0,0,0,0.5);
     }
-    .email-header { background: #10132b; color: white; padding: 15px; }
-    .email-body { padding: 10px; }
-    .email-body * { max-width: 100% !important; }
+    .email-header { background: #10132b; color: white; padding: 12px; font-size: 13px; border-bottom: 2px solid var(--brand); }
+    .email-body { padding: 10px; color: #000; }
+    .email-body * { max-width: 100% !important; height: auto !important; }
   </style>
 </head>
 <body>
@@ -118,16 +79,15 @@
     <h1>🚀 SUPER <span>STREAMING</span></h1>
   </div>
 
-  <div class="instrucciones">
-    <div class="instruccion-item"><b>•</b> EN TV: VIAJE > ENVIAR EMAIL</div>
-    <div class="instruccion-item"><b>•</b> EN TV: ACTUALIZAR HOGAR > ENVIAR EMAIL</div>
-    <div class="instruccion-item"><b>•</b> MOVIL: TEMPORAL > ENVIAR EMAIL</div>
-  </div>
-
-  <div class="ad-wrapper">
-    <span style="font-size: 8px; color: #222; margin-bottom: 2px;">AD</span>
+  <div class="top-ad">
     <script async="async" data-cfasync="false" src="https://pl28653744.effectivegatecpm.com/8a7799c7f525d405dcfb1471a70d0b70/invoke.js"></script>
     <div id="container-8a7799c7f525d405dcfb1471a70d0b70"></div>
+  </div>
+
+  <div class="instrucciones">
+    <div class="instruccion-item">• EN TV: VIAJE > ENVIAR EMAIL</div>
+    <div class="instruccion-item">• EN TV: ACTUALIZAR HOGAR > ENVIAR EMAIL</div>
+    <div class="instruccion-item">• MOVIL: TEMPORAL > ENVIAR EMAIL</div>
   </div>
 
   <div class="panel">
@@ -160,9 +120,7 @@
         result.appendChild(card);
       });
       status.innerHTML = "✅ ¡Listo!";
-    } catch (error) {
-      status.innerHTML = "❌ Error de conexión.";
-    }
+    } catch (e) { status.innerHTML = "❌ Error de red."; }
   }
   document.getElementById("btn").addEventListener("click", buscar);
 </script>
