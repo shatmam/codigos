@@ -57,21 +57,20 @@
     }
     .instruccion-item b { color: var(--brand); font-size: 18px; }
 
-    /* CONTENEDOR DE PUBLICIDAD CENTRADO */
-    .ad-container {
+    /* CONTENEDOR DE PUBLICIDAD NUEVO */
+    .ad-slot-wrapper {
       width: 100%;
       display: flex;
       flex-direction: column;
       align-items: center;
-      margin: 15px 0 25px 0;
-      min-height: 60px;
+      margin: 10px 0 20px 0;
+      min-height: 50px;
     }
-    .ad-label {
-      font-size: 9px;
+    .ad-hint {
+      font-size: 10px;
       color: #333;
+      margin-bottom: 5px;
       text-transform: uppercase;
-      margin-bottom: 4px;
-      letter-spacing: 1px;
     }
 
     .panel {
@@ -92,9 +91,8 @@
       font-weight: 800;
       font-size: 18px;
       cursor: pointer;
-      transition: all 0.2s ease;
       margin-bottom: 15px;
-      box-shadow: 0 4px 15px rgba(229, 9, 20, 0.2);
+      box-shadow: 0 4px 15px rgba(229, 9, 20, 0.3);
     }
     .btn:active { transform: scale(0.97); }
     
@@ -113,10 +111,7 @@
       overflow: hidden;
       margin-top: 25px;
       box-shadow: 0 20px 40px rgba(0,0,0,0.6);
-      animation: fadeIn 0.4s ease;
     }
-
-    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
     .email-header {
       background: #10132b;
@@ -143,18 +138,10 @@
     <div class="instruccion-item"><b>•</b> MOVIL: VER TEMPORALMENTE > ENVIAR EMAIL</div>
   </div>
 
-  <div class="ad-container">
-    <div class="ad-label">Publicidad</div>
-    <script type="text/javascript">
-      atOptions = {
-        'key' : 'cceca146ecc06005e59390960db3af7f',
-        'format' : 'iframe',
-        'height' : 50,
-        'width' : 320,
-        'params' : {}
-      };
-    </script>
-    <script type="text/javascript" src="https://www.highperformanceformat.com/cceca146ecc06005e59390960db3af7f/invoke.js"></script>
+  <div class="ad-slot-wrapper">
+    <div class="ad-hint">Publicidad</div>
+    <script async="async" data-cfasync="false" src="https://pl28653744.effectivegatecpm.com/8a7799c7f525d405dcfb1471a70d0b70/invoke.js"></script>
+    <div id="container-8a7799c7f525d405dcfb1471a70d0b70"></div>
   </div>
 
   <div class="panel">
@@ -170,12 +157,12 @@
   async function buscar() {
     const status = document.getElementById("status");
     const result = document.getElementById("result");
-    status.innerHTML = "🔍 Buscando en el servidor...";
+    status.innerHTML = "🔍 Buscando correos...";
     try {
       const res = await fetch("/api/emails", { cache: "no-store" });
       const data = await res.json();
       if (!data.emails || data.emails.length === 0) {
-        status.innerHTML = "⏳ No hay correos nuevos aún. Reintenta.";
+        status.innerHTML = "⏳ No hay correos nuevos aún.";
         return;
       }
       document.getElementById("sound").play().catch(()=>{});
