@@ -1,13 +1,14 @@
 {
   "name": "panel-netflix",
   "version": "1.0.0",
-  "description": "Panel de correos para Netflix",
+  "description": "Panel de correos filtrados",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
   },
   "dependencies": {
     "express": "^4.18.2",
-    "imapflow": "^1.0.124"
+    "imapflow": "^1.0.124",
+    "mailparser": "^3.6.5"
   }
 }
