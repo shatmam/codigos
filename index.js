@@ -1,15 +1,17 @@
 const express = require("express");
 const path = require("path");
 const { ImapFlow } = require("imapflow");
-const simpleParser = require('mailparser').simpleParser; // Necesitamos esto para limpiar el texto
+const { simpleParser } = require('mailparser'); // Importación corregida
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(express.static(path.join(__dirname, "public")));
 
+/* ================= CONFIGURACIÓN ================= */
 const EMAIL_USER = "digitalesservicios311@gmail.com"; 
 const EMAIL_PASS = "rfbmuirunbfwcara"; 
+/* ================================================= */
 
 app.get("/api/emails", async (req, res) => {
     const client = new ImapFlow({
@@ -26,19 +28,20 @@ app.get("/api/emails", async (req, res) => {
         await client.mailboxOpen('INBOX');
         
         let emails = [];
+        // Buscamos los últimos 5 correos de Netflix
         let list = await client.search({ from: "netflix" });
         
-        // Revisamos los 3 más recientes
-        for (let seq of list.slice(-3).reverse()) {
+        for (let seq of list.slice(-5).reverse()) {
             let msg = await client.fetchOne(seq, { source: true, envelope: true });
             
-            // PROCESAMIENTO DEL CORREO (Para quitar el texto raro)
+            // Aquí es donde ocurre la magia de limpieza
             let parsed = await simpleParser(msg.source);
             
             emails.push({
                 subject: msg.envelope.subject,
                 date: msg.envelope.date.toLocaleString('es-ES'),
-                html: parsed.html || parsed.textAsHtml || "Contenido no disponible"
+                // Enviamos el HTML limpio, si no hay HTML enviamos el texto plano
+                html: parsed.html || `<pre>${parsed.text}</pre>`
             });
         }
 
@@ -46,8 +49,11 @@ app.get("/api/emails", async (req, res) => {
         res.json({ emails });
 
     } catch (error) {
-        res.status(500).json({ error: "Error: " + error.message });
+        console.error("ERROR:", error.message);
+        res.status(500).json({ error: "Reintenta en un momento: " + error.message });
     }
 });
 
-app.listen(PORT, '0.0.0.0', () => { console.log("Panel funcionando con limpieza activa"); });
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`🚀 Panel listo y limpiando correos`);
+});
