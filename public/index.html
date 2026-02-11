@@ -3,109 +3,171 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Super Streaming | Panel VIP</title>
+  <title>Panel VIP | Códigos Streaming</title>
   <style>
-    :root { --bg: #0b0e1a; --card: #161a2f; --brand: #e50914; --text: #ffffff; }
-    body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', sans-serif; padding: 20px; display: flex; justify-content: center; margin:0; }
+    :root {
+      --bg: #0b0e1a;
+      --card: #161a2f;
+      --brand: #e50914;
+      --text: #ffffff;
+      --muted: #b9bfd6;
+      --border: #2a2f4a;
+      --radius: 16px;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; background: var(--bg); color: var(--text);
+      font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      padding: 20px 15px; display: flex; justify-content: center;
+    }
+
     .container { width: 100%; max-width: 550px; }
-    .ad-box { width: 100%; min-height: 60px; display: flex; justify-content: center; margin: 15px 0; overflow: hidden; }
-    .panel { background: var(--card); padding: 20px; border-radius: 16px; border: 1px solid #2a2f4a; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-    .btn { width: 100%; height: 60px; background: var(--brand); border: none; color: #fff; font-weight: 800; border-radius: 12px; cursor: pointer; font-size: 18px; transition: 0.3s; }
-    .btn:active { transform: scale(0.98); }
-    .status { margin-top: 15px; text-align: center; font-size: 14px; color: #b9bfd6; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 8px; }
-    .email-card { background: white; color: black; margin-top: 20px; border-radius: 12px; overflow: hidden; animation: fadeIn 0.5s; }
-    .email-header { background: #10132b; color: white; padding: 12px; font-size: 14px; border-bottom: 2px solid var(--brand); }
-    .email-body { padding: 15px; font-size: 14px; }
+
+    /* CABECERA */
+    .hero { text-align: center; margin-bottom: 20px; }
+    .hero h1 { font-size: 26px; margin: 0; letter-spacing: 1px; }
+    .hero span { color: var(--brand); font-weight: 900; }
+
+    /* PUBLICIDAD */
+    .ad-slot { width: 100%; display: flex; justify-content: center; margin-bottom: 20px; min-height: 60px; }
+
+    /* INSTRUCCIONES */
+    .instrucciones {
+      background: var(--card); border-left: 4px solid var(--brand);
+      border-radius: 12px; padding: 15px; margin-bottom: 25px;
+      box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+    }
+    .instruccion-item {
+      font-size: 13px; font-weight: 700; margin-bottom: 8px;
+      color: var(--muted); display: flex; align-items: center; gap: 10px;
+    }
+    .instruccion-item b { color: var(--brand); font-size: 18px; }
+
+    /* PANEL DE ACCIÓN */
+    .panel {
+      background: var(--card); border-radius: var(--radius);
+      padding: 20px; border: 1px solid var(--border);
+    }
+
+    .btn {
+      width: 100%; height: 62px; border: none; border-radius: 12px;
+      background: var(--brand); color: #fff; font-weight: 800; font-size: 18px;
+      cursor: pointer; transition: 0.2s; display: flex; align-items: center;
+      justify-content: center; gap: 10px; box-shadow: 0 5px 15px rgba(229, 9, 20, 0.3);
+    }
+    .btn:active { transform: scale(0.96); }
+    
+    .status {
+      text-align: center; font-size: 14px; color: var(--muted);
+      margin-top: 15px; padding: 10px; background: rgba(255,255,255,0.05);
+      border-radius: 8px; border: 1px dashed var(--border);
+    }
+
+    /* TARJETAS DE CORREO */
+    .email-result { margin-top: 25px; }
+    .email-card {
+      background: #ffffff; border-radius: var(--radius);
+      overflow: hidden; box-shadow: 0 15px 35px rgba(0,0,0,0.7);
+      margin-bottom: 20px; animation: slideUp 0.4s ease-out;
+    }
+
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .email-header {
+      background: #10132b; color: white; padding: 15px;
+      border-bottom: 3px solid var(--brand);
+    }
+    .email-header h3 { margin: 0; font-size: 15px; line-height: 1.4; }
+    .email-header p { margin: 5px 0 0; font-size: 11px; color: var(--muted); }
+
+    .email-body { padding: 15px; color: #000; overflow-x: hidden; }
     .email-body * { max-width: 100% !important; }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
   </style>
 </head>
 <body>
 
 <div class="container">
-  <h1 style="text-align:center; font-size: 24px;">🚀 SUPER <span>STREAMING</span></h1>
+  <div class="hero"><h1>🚀 SUPER <span>STREAMING</span></h1></div>
 
-  <div class="ad-box">
+  <div class="ad-slot">
     <script type="text/javascript">
       atOptions = { 'key' : 'cceca146ecc06005e59390960db3af7f', 'format' : 'iframe', 'height' : 50, 'width' : 320, 'params' : {} };
     </script>
     <script type="text/javascript" src="https://www.highperformanceformat.com/cceca146ecc06005e59390960db3af7f/invoke.js"></script>
   </div>
 
-  <div class="panel">
-    <button class="btn" id="btnBuscar">📩 BUSCAR CÓDIGO NUEVO</button>
-    <div id="status" class="status">Estado: Esperando orden...</div>
-    <div id="result"></div>
+  <div class="instrucciones">
+    <div class="instruccion-item"><b>•</b> EN TV: VIAJE O ACTUALIZAR HOGAR</div>
+    <div class="instruccion-item"><b>•</b> MÓVIL: VER TEMPORALMENTE</div>
+    <div class="instruccion-item"><b>•</b> RECUERDA: DALE A "ENVIAR EMAIL" EN LA TV</div>
   </div>
 
-  <div class="ad-box">
+  <div class="panel">
+    <button class="btn" id="btnBuscar">📩 OBTENER CÓDIGO AHORA</button>
+    <div class="status" id="status">Esperando solicitud...</div>
+    <div id="result" class="email-result"></div>
+  </div>
+
+  <div class="ad-slot" style="margin-top:20px;">
     <script async="async" data-cfasync="false" src="https://pl28653744.effectivegatecpm.com/8a7799c7f525d405dcfb1471a70d0b70/invoke.js"></script>
     <div id="container-8a7799c7f525d405dcfb1471a70d0b70"></div>
   </div>
 </div>
 
+<audio id="sound" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg"></audio>
+
 <script>
-  // LÓGICA DE BÚSQUEDA AISLADA
-  document.getElementById('btnBuscar').onclick = async function() {
+  document.getElementById('btnBuscar').addEventListener('click', async () => {
     const status = document.getElementById("status");
     const result = document.getElementById("result");
     
-    status.innerHTML = "⏳ Conectando con Railway...";
-    result.innerHTML = "";
+    status.innerHTML = "🔍 Conectando con digitalesservicios311...";
+    result.innerHTML = ""; // Limpiar códigos viejos
 
     try {
-      // Intentamos la petición con un timeout de 15 segundos
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000);
+      // Llamada al servidor API que configuramos
+      const res = await fetch("/api/emails", { cache: "no-store" });
+      const data = await res.json();
 
-      const response = await fetch("/api/emails", { 
-        signal: controller.signal,
-        cache: 'no-store'
-      });
-      
-      clearTimeout(timeoutId);
-
-      if (!response.ok) throw new Error("Error en el servidor (" + response.status + ")");
-
-      const data = await response.json();
+      if (data.error) {
+        status.innerHTML = "❌ Error: " + data.error;
+        return;
+      }
 
       if (!data.emails || data.emails.length === 0) {
-        status.innerHTML = "⏳ Conectado: No hay correos nuevos.";
+        status.innerHTML = "⏳ No hay correos nuevos de Netflix. Intenta en 10 seg.";
         return;
       }
 
-      // FILTRO NETFLIX
-      const filtrados = data.emails.filter(e => {
-        const contenido = (e.subject + e.html).toLowerCase();
-        return contenido.includes("netflix");
-      });
+      // Si hay correos, sonar alerta
+      document.getElementById("sound").play().catch(() => {});
 
-      if (filtrados.length === 0) {
-        status.innerHTML = "⏳ No se hallaron códigos de Netflix.";
-        return;
-      }
-
-      filtrados.forEach(e => {
+      data.emails.forEach(e => {
         const card = document.createElement("div");
         card.className = "email-card";
         card.innerHTML = `
-          <div class="email-header"><b>${e.subject}</b></div>
-          <div class="email-body">${e.html}</div>
+          <div class="email-header">
+            <h3>${e.subject}</h3>
+            <p>Recibido: ${e.date}</p>
+          </div>
+          <div class="email-body">
+            ${e.html}
+          </div>
         `;
         result.appendChild(card);
       });
 
-      status.innerHTML = "✅ ¡Códigos actualizados!";
+      status.innerHTML = "✅ ¡Código encontrado y filtrado!";
 
-    } catch (err) {
-      console.error(err);
-      if (err.name === 'AbortError') {
-        status.innerHTML = "❌ Error: El servidor tardó mucho en responder.";
-      } else {
-        status.innerHTML = "❌ Error de conexión: Revisa Railway.";
-      }
+    } catch (error) {
+      status.innerHTML = "❌ Error crítico: El servidor no responde.";
+      console.error(error);
     }
-  };
+  });
 </script>
 
 </body>
