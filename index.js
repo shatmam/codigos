@@ -8,7 +8,7 @@ const PORT = process.env.PORT || 3000;
 app.use(express.static(path.join(__dirname, "public")));
 
 const EMAIL_USER = "digitalesservicios311@gmail.com"; 
-const EMAIL_PASS = "iyxjnaadfsbrsjl"; // MANTENEMOS LAS 16 LETRAS
+const EMAIL_PASS = "rfbmuirunbfwcara"; // MANTENEMOS LAS 16 LETRAS
 
 app.get("/api/emails", async (req, res) => {
     const client = new ImapFlow({
@@ -62,3 +62,4 @@ app.get("/api/emails", async (req, res) => {
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Servidor listo en puerto ${PORT}`);
 });
+
