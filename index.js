@@ -1,17 +1,19 @@
 const express = require("express");
 const path = require("path");
 const { ImapFlow } = require("imapflow");
-const { simpleParser } = require('mailparser'); // Importación corregida
+const { simpleParser } = require('mailparser');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(express.static(path.join(__dirname, "public")));
 
-/* ================= CONFIGURACIÓN ================= */
 const EMAIL_USER = "digitalesservicios311@gmail.com"; 
 const EMAIL_PASS = "rfbmuirunbfwcara"; 
-/* ================================================= */
+
+// FILTROS: Solo entra si tiene estas palabras, y NO entra si tiene las prohibidas
+const PALABRAS_CLAVE = ["código", "hogar", "viaje", "temporal", "acceso", "confirmar", "iniciar"];
+const PALABRAS_PROHIBIDAS = ["factura", "pago", "recibo", "actualizar tarjeta", "suscripción"];
 
 app.get("/api/emails", async (req, res) => {
     const client = new ImapFlow({
@@ -28,32 +30,32 @@ app.get("/api/emails", async (req, res) => {
         await client.mailboxOpen('INBOX');
         
         let emails = [];
-        // Buscamos los últimos 5 correos de Netflix
         let list = await client.search({ from: "netflix" });
         
-        for (let seq of list.slice(-5).reverse()) {
+        for (let seq of list.slice(-8).reverse()) {
             let msg = await client.fetchOne(seq, { source: true, envelope: true });
+            let subject = (msg.envelope.subject || "").toLowerCase();
             
-            // Aquí es donde ocurre la magia de limpieza
-            let parsed = await simpleParser(msg.source);
-            
-            emails.push({
-                subject: msg.envelope.subject,
-                date: msg.envelope.date.toLocaleString('es-ES'),
-                // Enviamos el HTML limpio, si no hay HTML enviamos el texto plano
-                html: parsed.html || `<pre>${parsed.text}</pre>`
-            });
+            // Aplicar Filtros
+            const tieneClave = PALABRAS_CLAVE.some(p => subject.includes(p));
+            const esBasura = PALABRAS_PROHIBIDAS.some(p => subject.includes(p));
+
+            if (tieneClave && !esBasura) {
+                let parsed = await simpleParser(msg.source);
+                emails.push({
+                    subject: msg.envelope.subject,
+                    date: msg.envelope.date.toLocaleString('es-ES'),
+                    html: parsed.html || `<pre>${parsed.text}</pre>`
+                });
+            }
         }
 
         await client.logout();
         res.json({ emails });
 
     } catch (error) {
-        console.error("ERROR:", error.message);
-        res.status(500).json({ error: "Reintenta en un momento: " + error.message });
+        res.status(500).json({ error: "Reintenta en 10 segundos..." });
     }
 });
 
-app.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 Panel listo y limpiando correos`);
-});
+app.listen(PORT, '0.0.0.0', () => { console.log("Servidor con filtros activos"); });
