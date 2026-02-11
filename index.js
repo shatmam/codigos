@@ -16,18 +16,14 @@ const PALABRAS_PROHIBIDAS = ["factura", "pago", "recibo", "actualizar tarjeta", 
 
 app.get("/api/emails", async (req, res) => {
     const client = new ImapFlow({
-        host: "imap.gmail.com",
-        port: 993,
-        secure: true,
+        host: "imap.gmail.com", port: 993, secure: true,
         auth: { user: EMAIL_USER, pass: EMAIL_PASS },
-        logger: false,
-        tls: { rejectUnauthorized: false }
+        logger: false, tls: { rejectUnauthorized: false }
     });
 
     try {
         await client.connect();
         await client.mailboxOpen('INBOX');
-        
         let emails = [];
         let list = await client.search({ from: "netflix" });
         const ahora = new Date();
@@ -48,7 +44,6 @@ app.get("/api/emails", async (req, res) => {
                         timeZone: 'America/Santo_Domingo',
                         hour: '2-digit', minute: '2-digit', hour12: true
                     });
-
                     emails.push({
                         subject: msg.envelope.subject,
                         date: fechaRD,
@@ -61,8 +56,8 @@ app.get("/api/emails", async (req, res) => {
         await client.logout();
         res.json({ emails });
     } catch (error) {
-        res.status(500).json({ error: "Reconectando..." });
+        res.status(500).json({ error: "Buscando..." });
     }
 });
 
-app.listen(PORT, '0.0.0.0', () => { console.log("Panel con Auto-Refresco listo"); });
+app.listen(PORT, '0.0.0.0', () => { console.log("Panel RD con Instrucciones Pro"); });
