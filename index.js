@@ -8,13 +8,11 @@ const PORT = process.env.PORT || 3000;
 
 app.use(express.static(path.join(__dirname, "public")));
 
-/* ================= CONFIGURACIÓN ================= */
 const EMAIL_USER = "digitalesservicios311@gmail.com"; 
 const EMAIL_PASS = "rfbmuirunbfwcara"; 
 
 const PALABRAS_CLAVE = ["código", "hogar", "viaje", "temporal", "acceso", "confirmar", "iniciar"];
 const PALABRAS_PROHIBIDAS = ["factura", "pago", "recibo", "actualizar tarjeta", "suscripción"];
-/* ================================================= */
 
 app.get("/api/emails", async (req, res) => {
     const client = new ImapFlow({
@@ -31,36 +29,38 @@ app.get("/api/emails", async (req, res) => {
         await client.mailboxOpen('INBOX');
         
         let emails = [];
+        // Buscamos los últimos correos (Netflix envía rápido, así que 10 son suficientes)
         let list = await client.search({ from: "netflix" });
         
-        // Revisamos los últimos 8 mensajes
-        for (let seq of list.slice(-8).reverse()) {
+        const ahora = new Date();
+
+        for (let seq of list.slice(-10).reverse()) {
             let msg = await client.fetchOne(seq, { source: true, envelope: true });
-            let subject = (msg.envelope.subject || "").toLowerCase();
             
-            const tieneClave = PALABRAS_CLAVE.some(p => subject.includes(p));
-            const esBasura = PALABRAS_PROHIBIDAS.some(p => subject.includes(p));
+            // --- FILTRO DE TIEMPO (15 MINUTOS) ---
+            const fechaCorreo = new Date(msg.envelope.date);
+            const diferenciaMinutos = (ahora - fechaCorreo) / (1000 * 60);
 
-            if (tieneClave && !esBasura) {
-                let parsed = await simpleParser(msg.source);
-                
-                // HORA DE REPÚBLICA DOMINICANA (GMT-4)
-                const fechaRD = msg.envelope.date.toLocaleString('es-DO', {
-                    timeZone: 'America/Santo_Domingo',
-                    day: '2-digit',
-                    month: '2-digit',
-                    year: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    hour12: true
-                });
+            if (diferenciaMinutos <= 15) { // Solo si tiene 15 min o menos
+                let subject = (msg.envelope.subject || "").toLowerCase();
+                const tieneClave = PALABRAS_CLAVE.some(p => subject.includes(p));
+                const esBasura = PALABRAS_PROHIBIDAS.some(p => subject.includes(p));
 
-                emails.push({
-                    subject: msg.envelope.subject,
-                    date: fechaRD,
-                    to: msg.envelope.to[0].address, 
-                    html: parsed.html || `<pre>${parsed.text}</pre>`
-                });
+                if (tieneClave && !esBasura) {
+                    let parsed = await simpleParser(msg.source);
+                    
+                    const fechaRD = fechaCorreo.toLocaleString('es-DO', {
+                        timeZone: 'America/Santo_Domingo',
+                        hour: '2-digit', minute: '2-digit', hour12: true
+                    });
+
+                    emails.push({
+                        subject: msg.envelope.subject,
+                        date: fechaRD,
+                        to: msg.envelope.to[0].address, 
+                        html: parsed.html || `<pre>${parsed.text}</pre>`
+                    });
+                }
             }
         }
 
@@ -68,11 +68,8 @@ app.get("/api/emails", async (req, res) => {
         res.json({ emails });
 
     } catch (error) {
-        console.error(error);
         res.status(500).json({ error: "Reintenta en 10 segundos..." });
     }
 });
 
-app.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 Panel listo - Hora RD Configurada`);
-});
+app.listen(PORT, '0.0.0.0', () => { console.log("Filtro de 15 min activado"); });
