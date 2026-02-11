@@ -3,133 +3,109 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Super Streaming | Panel de Códigos</title>
+  <title>Super Streaming | Panel VIP</title>
   <style>
-    :root {
-      --bg: #0b0e1a;
-      --card: #161a2f;
-      --brand: #e50914;
-      --text: #ffffff;
-      --muted: #b9bfd6;
-      --border: #2a2f4a;
-      --radius: 16px;
-    }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0; background: var(--bg); color: var(--text);
-      font-family: 'Segoe UI', sans-serif; padding: 20px 15px;
-      display: flex; justify-content: center;
-    }
-    .container { width: 100%; max-width: 600px; }
-    .hero { text-align: center; margin-bottom: 25px; }
-    .hero h1 { font-size: 28px; margin: 0; }
-    .hero span { color: var(--brand); font-weight: 900; }
-
-    /* PUBLICIDAD */
-    .ad-top, .ad-bottom { width: 100%; display: flex; justify-content: center; margin-bottom: 20px; min-height: 50px; }
-
-    .instrucciones {
-      background: var(--card); border-left: 4px solid var(--brand);
-      border-radius: 12px; padding: 15px; margin-bottom: 25px;
-    }
-    .instruccion-item { font-size: 13px; font-weight: 700; margin-bottom: 10px; display: flex; align-items: center; gap: 10px; color: var(--muted); }
-    .instruccion-item b { color: var(--brand); font-size: 18px; }
-
-    .panel { background: var(--card); border-radius: var(--radius); padding: 20px; border: 1px solid var(--border); }
-    .btn {
-      width: 100%; height: 60px; border: none; border-radius: 12px;
-      background: var(--brand); color: #fff; font-weight: 800; font-size: 18px;
-      cursor: pointer; margin-bottom: 15px; display: flex; align-items: center; justify-content: center;
-    }
-    .status { text-align: center; font-size: 14px; color: var(--muted); padding: 10px; background: rgba(255,255,255,0.05); border-radius: 8px; }
-
-    /* TARJETA DE CORREO */
-    .email-card { background: #ffffff; border-radius: var(--radius); overflow: hidden; margin-top: 25px; color: #000; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-    .email-header { background: #10132b; color: white; padding: 15px; border-bottom: 2px solid var(--brand); }
-    .email-body { padding: 15px; }
+    :root { --bg: #0b0e1a; --card: #161a2f; --brand: #e50914; --text: #ffffff; }
+    body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', sans-serif; padding: 20px; display: flex; justify-content: center; margin:0; }
+    .container { width: 100%; max-width: 550px; }
+    .ad-box { width: 100%; min-height: 60px; display: flex; justify-content: center; margin: 15px 0; overflow: hidden; }
+    .panel { background: var(--card); padding: 20px; border-radius: 16px; border: 1px solid #2a2f4a; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+    .btn { width: 100%; height: 60px; background: var(--brand); border: none; color: #fff; font-weight: 800; border-radius: 12px; cursor: pointer; font-size: 18px; transition: 0.3s; }
+    .btn:active { transform: scale(0.98); }
+    .status { margin-top: 15px; text-align: center; font-size: 14px; color: #b9bfd6; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 8px; }
+    .email-card { background: white; color: black; margin-top: 20px; border-radius: 12px; overflow: hidden; animation: fadeIn 0.5s; }
+    .email-header { background: #10132b; color: white; padding: 12px; font-size: 14px; border-bottom: 2px solid var(--brand); }
+    .email-body { padding: 15px; font-size: 14px; }
     .email-body * { max-width: 100% !important; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
   </style>
 </head>
 <body>
 
 <div class="container">
-  <div class="hero"><h1>🚀 SUPER <span>STREAMING</span></h1></div>
+  <h1 style="text-align:center; font-size: 24px;">🚀 SUPER <span>STREAMING</span></h1>
 
-  <div class="ad-top">
+  <div class="ad-box">
     <script type="text/javascript">
       atOptions = { 'key' : 'cceca146ecc06005e59390960db3af7f', 'format' : 'iframe', 'height' : 50, 'width' : 320, 'params' : {} };
     </script>
     <script type="text/javascript" src="https://www.highperformanceformat.com/cceca146ecc06005e59390960db3af7f/invoke.js"></script>
   </div>
 
-  <div class="instrucciones">
-    <div class="instruccion-item"><b>•</b> EN TV: VIAJE / HOGAR > ENVIAR EMAIL</div>
-    <div class="instruccion-item"><b>•</b> MÓVIL: TEMPORAL > ENVIAR EMAIL</div>
-  </div>
-
   <div class="panel">
-    <button class="btn" id="btn">📩 BUSCAR CÓDIGO NUEVO</button>
-    <div class="status" id="status">Esperando solicitud...</div>
+    <button class="btn" id="btnBuscar">📩 BUSCAR CÓDIGO NUEVO</button>
+    <div id="status" class="status">Estado: Esperando orden...</div>
     <div id="result"></div>
   </div>
 
-  <div class="ad-bottom">
+  <div class="ad-box">
     <script async="async" data-cfasync="false" src="https://pl28653744.effectivegatecpm.com/8a7799c7f525d405dcfb1471a70d0b70/invoke.js"></script>
     <div id="container-8a7799c7f525d405dcfb1471a70d0b70"></div>
   </div>
 </div>
 
-<audio id="sound" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg"></audio>
-
 <script>
-  async function buscar() {
+  // LÓGICA DE BÚSQUEDA AISLADA
+  document.getElementById('btnBuscar').onclick = async function() {
     const status = document.getElementById("status");
     const result = document.getElementById("result");
-    status.innerHTML = "🔍 Buscando en Gmail...";
     
+    status.innerHTML = "⏳ Conectando con Railway...";
+    result.innerHTML = "";
+
     try {
-      const res = await fetch("/api/emails", { cache: "no-store" });
-      const data = await res.json();
+      // Intentamos la petición con un timeout de 15 segundos
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+      const response = await fetch("/api/emails", { 
+        signal: controller.signal,
+        cache: 'no-store'
+      });
+      
+      clearTimeout(timeoutId);
+
+      if (!response.ok) throw new Error("Error en el servidor (" + response.status + ")");
+
+      const data = await response.json();
 
       if (!data.emails || data.emails.length === 0) {
-        status.innerHTML = "⏳ No hay correos nuevos aún.";
+        status.innerHTML = "⏳ Conectado: No hay correos nuevos.";
         return;
       }
 
-      // FILTRO: Solo correos de Netflix
-      const filtered = data.emails.filter(e => {
-        const content = (e.subject + e.html + (e.from || "")).toLowerCase();
-        return content.includes("netflix");
+      // FILTRO NETFLIX
+      const filtrados = data.emails.filter(e => {
+        const contenido = (e.subject + e.html).toLowerCase();
+        return contenido.includes("netflix");
       });
 
-      if (filtered.length === 0) {
-        status.innerHTML = "⏳ No se hallaron correos de Netflix.";
+      if (filtrados.length === 0) {
+        status.innerHTML = "⏳ No se hallaron códigos de Netflix.";
         return;
       }
 
-      result.innerHTML = "";
-      filtered.forEach(e => {
+      filtrados.forEach(e => {
         const card = document.createElement("div");
         card.className = "email-card";
         card.innerHTML = `
-          <div class="email-header">
-            <h3 style="margin:0; font-size:15px;">${e.subject}</h3>
-            <small>${e.date || ''}</small>
-          </div>
+          <div class="email-header"><b>${e.subject}</b></div>
           <div class="email-body">${e.html}</div>
         `;
         result.appendChild(card);
       });
 
-      status.innerHTML = "✅ ¡Correo encontrado!";
-      document.getElementById("sound").play().catch(()=>{});
+      status.innerHTML = "✅ ¡Códigos actualizados!";
 
-    } catch (error) {
-      status.innerHTML = "❌ Error: El servidor no responde.";
+    } catch (err) {
+      console.error(err);
+      if (err.name === 'AbortError') {
+        status.innerHTML = "❌ Error: El servidor tardó mucho en responder.";
+      } else {
+        status.innerHTML = "❌ Error de conexión: Revisa Railway.";
+      }
     }
-  }
-
-  document.getElementById("btn").addEventListener("click", buscar);
+  };
 </script>
 
 </body>
