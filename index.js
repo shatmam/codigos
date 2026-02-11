@@ -8,12 +8,13 @@ const PORT = process.env.PORT || 3000;
 
 app.use(express.static(path.join(__dirname, "public")));
 
+/* ================= CONFIGURACIÓN ================= */
 const EMAIL_USER = "digitalesservicios311@gmail.com"; 
 const EMAIL_PASS = "rfbmuirunbfwcara"; 
 
-// FILTROS: Solo entra si tiene estas palabras, y NO entra si tiene las prohibidas
 const PALABRAS_CLAVE = ["código", "hogar", "viaje", "temporal", "acceso", "confirmar", "iniciar"];
 const PALABRAS_PROHIBIDAS = ["factura", "pago", "recibo", "actualizar tarjeta", "suscripción"];
+/* ================================================= */
 
 app.get("/api/emails", async (req, res) => {
     const client = new ImapFlow({
@@ -32,19 +33,32 @@ app.get("/api/emails", async (req, res) => {
         let emails = [];
         let list = await client.search({ from: "netflix" });
         
+        // Revisamos los últimos 8 mensajes
         for (let seq of list.slice(-8).reverse()) {
             let msg = await client.fetchOne(seq, { source: true, envelope: true });
             let subject = (msg.envelope.subject || "").toLowerCase();
             
-            // Aplicar Filtros
             const tieneClave = PALABRAS_CLAVE.some(p => subject.includes(p));
             const esBasura = PALABRAS_PROHIBIDAS.some(p => subject.includes(p));
 
             if (tieneClave && !esBasura) {
                 let parsed = await simpleParser(msg.source);
+                
+                // HORA DE REPÚBLICA DOMINICANA (GMT-4)
+                const fechaRD = msg.envelope.date.toLocaleString('es-DO', {
+                    timeZone: 'America/Santo_Domingo',
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: true
+                });
+
                 emails.push({
                     subject: msg.envelope.subject,
-                    date: msg.envelope.date.toLocaleString('es-ES'),
+                    date: fechaRD,
+                    to: msg.envelope.to[0].address, 
                     html: parsed.html || `<pre>${parsed.text}</pre>`
                 });
             }
@@ -54,8 +68,11 @@ app.get("/api/emails", async (req, res) => {
         res.json({ emails });
 
     } catch (error) {
+        console.error(error);
         res.status(500).json({ error: "Reintenta en 10 segundos..." });
     }
 });
 
-app.listen(PORT, '0.0.0.0', () => { console.log("Servidor con filtros activos"); });
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`🚀 Panel listo - Hora RD Configurada`);
+});
