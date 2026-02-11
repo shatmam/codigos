@@ -1,7 +1,7 @@
 {
-  "name": "panel-streaming",
+  "name": "panel-netflix",
   "version": "1.0.0",
-  "description": "Panel de correos",
+  "description": "Panel de correos para Netflix",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
