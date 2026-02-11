@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Panel VIP | Códigos Streaming</title>
+  <title>Panel VIP | Códigos de Acceso</title>
   <style>
     :root {
       --bg: #0b0e1a;
@@ -30,7 +30,7 @@
     .hero span { color: var(--brand); font-weight: 900; }
 
     /* PUBLICIDAD */
-    .ad-slot { width: 100%; display: flex; justify-content: center; margin-bottom: 20px; min-height: 60px; }
+    .ad-slot { width: 100%; display: flex; justify-content: center; margin-bottom: 20px; min-height: 60px; overflow: hidden; }
 
     /* INSTRUCCIONES */
     .instrucciones {
@@ -84,8 +84,9 @@
     .email-header h3 { margin: 0; font-size: 15px; line-height: 1.4; }
     .email-header p { margin: 5px 0 0; font-size: 11px; color: var(--muted); }
 
-    .email-body { padding: 15px; color: #000; overflow-x: hidden; }
-    .email-body * { max-width: 100% !important; }
+    .email-body { padding: 10px; color: #000; overflow-x: hidden; }
+    /* Forzar que el contenido del mail no se salga de la pantalla */
+    .email-body img, .email-body table { max-width: 100% !important; height: auto !important; }
   </style>
 </head>
 <body>
@@ -101,13 +102,13 @@
   </div>
 
   <div class="instrucciones">
-    <div class="instruccion-item"><b>•</b> EN TV: VIAJE O ACTUALIZAR HOGAR</div>
-    <div class="instruccion-item"><b>•</b> MÓVIL: VER TEMPORALMENTE</div>
-    <div class="instruccion-item"><b>•</b> RECUERDA: DALE A "ENVIAR EMAIL" EN LA TV</div>
+    <div class="instruccion-item"><b>1</b> DALE A "ENVIAR EMAIL" EN TU TV</div>
+    <div class="instruccion-item"><b>2</b> ESPERA 10 SEGUNDOS</div>
+    <div class="instruccion-item"><b>3</b> PRESIONA EL BOTÓN ROJO DE ABAJO</div>
   </div>
 
   <div class="panel">
-    <button class="btn" id="btnBuscar">📩 OBTENER CÓDIGO AHORA</button>
+    <button class="btn" id="btnBuscar">📩 OBTENER CÓDIGO</button>
     <div class="status" id="status">Esperando solicitud...</div>
     <div id="result" class="email-result"></div>
   </div>
@@ -124,26 +125,30 @@
   document.getElementById('btnBuscar').addEventListener('click', async () => {
     const status = document.getElementById("status");
     const result = document.getElementById("result");
+    const btn = document.getElementById("btnBuscar");
     
-    status.innerHTML = "🔍 Conectando con digitalesservicios311...";
-    result.innerHTML = ""; // Limpiar códigos viejos
+    // Bloquear botón momentáneamente
+    btn.disabled = true;
+    status.innerHTML = "🔍 Buscando código de Netflix...";
+    result.innerHTML = ""; 
 
     try {
-      // Llamada al servidor API que configuramos
       const res = await fetch("/api/emails", { cache: "no-store" });
       const data = await res.json();
 
       if (data.error) {
-        status.innerHTML = "❌ Error: " + data.error;
+        status.innerHTML = "⏳ " + data.error;
+        btn.disabled = false;
         return;
       }
 
       if (!data.emails || data.emails.length === 0) {
-        status.innerHTML = "⏳ No hay correos nuevos de Netflix. Intenta en 10 seg.";
+        status.innerHTML = "❌ No se encontró un código. Asegúrate de enviarlo desde la TV.";
+        btn.disabled = false;
         return;
       }
 
-      // Si hay correos, sonar alerta
+      // Sonar alerta si hay éxito
       document.getElementById("sound").play().catch(() => {});
 
       data.emails.forEach(e => {
@@ -161,11 +166,12 @@
         result.appendChild(card);
       });
 
-      status.innerHTML = "✅ ¡Código encontrado y filtrado!";
+      status.innerHTML = "✅ ¡Código obtenido con éxito!";
+      btn.disabled = false;
 
     } catch (error) {
-      status.innerHTML = "❌ Error crítico: El servidor no responde.";
-      console.error(error);
+      status.innerHTML = "❌ Error de conexión. Reintenta.";
+      btn.disabled = false;
     }
   });
 </script>
