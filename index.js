@@ -29,26 +29,21 @@ app.get("/api/emails", async (req, res) => {
         await client.mailboxOpen('INBOX');
         
         let emails = [];
-        // Buscamos los últimos correos (Netflix envía rápido, así que 10 son suficientes)
         let list = await client.search({ from: "netflix" });
-        
         const ahora = new Date();
 
         for (let seq of list.slice(-10).reverse()) {
             let msg = await client.fetchOne(seq, { source: true, envelope: true });
-            
-            // --- FILTRO DE TIEMPO (15 MINUTOS) ---
             const fechaCorreo = new Date(msg.envelope.date);
             const diferenciaMinutos = (ahora - fechaCorreo) / (1000 * 60);
 
-            if (diferenciaMinutos <= 15) { // Solo si tiene 15 min o menos
+            if (diferenciaMinutos <= 15) { 
                 let subject = (msg.envelope.subject || "").toLowerCase();
                 const tieneClave = PALABRAS_CLAVE.some(p => subject.includes(p));
                 const esBasura = PALABRAS_PROHIBIDAS.some(p => subject.includes(p));
 
                 if (tieneClave && !esBasura) {
                     let parsed = await simpleParser(msg.source);
-                    
                     const fechaRD = fechaCorreo.toLocaleString('es-DO', {
                         timeZone: 'America/Santo_Domingo',
                         hour: '2-digit', minute: '2-digit', hour12: true
@@ -63,13 +58,11 @@ app.get("/api/emails", async (req, res) => {
                 }
             }
         }
-
         await client.logout();
         res.json({ emails });
-
     } catch (error) {
-        res.status(500).json({ error: "Reintenta en 10 segundos..." });
+        res.status(500).json({ error: "Reconectando..." });
     }
 });
 
-app.listen(PORT, '0.0.0.0', () => { console.log("Filtro de 15 min activado"); });
+app.listen(PORT, '0.0.0.0', () => { console.log("Panel con Auto-Refresco listo"); });
