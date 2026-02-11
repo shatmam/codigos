@@ -1,120 +1,86 @@
 const express = require("express");
-const fs = require("fs");
 const path = require("path");
-const { google } = require("googleapis");
+const ImapFlow = require("imapflow").Client;
 
 const app = express();
-// ✅ PUERTO DINÁMICO PARA RAILWAY
 const PORT = process.env.PORT || 3000;
-
-const CREDENTIALS_PATH = path.join(__dirname, "credentials.json");
-const TOKEN_PATH = path.join(__dirname, "token.json");
-
-const SCOPES = ["https://www.googleapis.com/auth/gmail.modify"];
-
-/* ================= CONFIG FILTROS ================= */
-const GMAIL_FILTER = "from:info@account.netflix.com newer_than:2h";
-const REQUIRED_PHRASES = [
-  "tu código de acceso",
-  "código de acceso temporal",
-  "ingresa este código para iniciar sesión",
-  "escribe este código para iniciar sesión",
-  "iniciar sesión",
-  "hogar",
-  "actualizar tu hogar",
-  "¿solicitaste actualizar tu hogar con netflix?"
-];
 
 app.use(express.static(path.join(__dirname, "public")));
 
-// ✅ FUNCIÓN PARA CARGAR CREDENCIALES DESDE VARIABLE O ARCHIVO
-function getCredentials() {
-  if (process.env.GOOGLE_CREDENTIALS) {
-    return JSON.parse(process.env.GOOGLE_CREDENTIALS);
-  }
-  if (fs.existsSync(CREDENTIALS_PATH)) {
-    return JSON.parse(fs.readFileSync(CREDENTIALS_PATH));
-  }
-  throw new Error("No se encontraron credenciales (Variable GOOGLE_CREDENTIALS o archivo json)");
-}
+/* ================= CONFIGURACIÓN TOTAL ================= */
+const EMAIL_USER = "digitalesservicios311@gmail.com"; 
+const EMAIL_PASS = "iyxjnaadfsbrsjl"; 
 
-// ✅ FUNCIÓN PARA CARGAR TOKEN DESDE VARIABLE O ARCHIVO
-function getToken() {
-  if (process.env.GOOGLE_TOKEN) {
-    return JSON.parse(process.env.GOOGLE_TOKEN);
-  }
-  if (fs.existsSync(TOKEN_PATH)) {
-    return JSON.parse(fs.readFileSync(TOKEN_PATH));
-  }
-  return null;
-}
-
-/* ================= RUTAS ================= */
+// Filtros de frases obligatorias para evitar correos basura de publicidad
+const REQUIRED_PHRASES = [
+  "código", "hogar", "viaje", "temporal", "acceso", "confirmar"
+];
+/* ======================================================== */
 
 app.get("/api/emails", async (req, res) => {
-  try {
-    const credentials = getCredentials();
-    const { client_secret, client_id, redirect_uris } = credentials.web;
-    
-    // Usamos el primer redirect_uri (recuerda actualizarlo en Google Console)
-    const oAuth2Client = new google.auth.OAuth2(client_id, client_secret, redirect_uris[0]);
-
-    const token = getToken();
-    if (!token) return res.status(401).json({ error: "No hay token de acceso" });
-
-    oAuth2Client.setCredentials(token);
-    const gmail = google.gmail({ version: "v1", auth: oAuth2Client });
-
-    const response = await gmail.users.messages.list({
-      userId: "me",
-      q: GMAIL_FILTER,
+    const client = new ImapFlow({
+        host: "imap.gmail.com",
+        port: 993,
+        secure: true,
+        auth: {
+            user: EMAIL_USER,
+            pass: EMAIL_PASS
+        },
+        logger: false
     });
 
-    if (!response.data.messages) return res.json({ emails: [] });
+    try {
+        await client.connect();
+        let lock = await client.getMailboxLock("INBOX");
+        
+        let emails = [];
+        
+        // Buscamos en los últimos 15 correos para mayor margen
+        for await (let message of client.listMessages("INBOX", { seq: "1:15" }, { source: true, envelope: true })) {
+            let subject = message.envelope.subject || "";
+            let from = message.envelope.from[0].address || "";
+            let subjectLower = subject.toLowerCase();
+            
+            // FILTRO 1: Solo Netflix
+            if (from.toLowerCase().includes("netflix")) {
+                let rawHtml = message.source.toString();
+                let htmlLower = rawHtml.toLowerCase();
 
-    const emails = [];
-    for (const msg of response.data.messages) {
-      const detail = await gmail.users.messages.get({ userId: "me", id: msg.id });
-      const payload = detail.data.payload;
-      
-      let html = "";
-      if (payload.parts) {
-        const part = payload.parts.find(p => p.mimeType === "text/html");
-        if (part && part.body.data) {
-          html = Buffer.from(part.body.data, "base64").toString("utf-8");
+                // FILTRO 2: Solo si contiene frases de códigos o hogar
+                const match = REQUIRED_PHRASES.some(phrase => 
+                    subjectLower.includes(phrase) || htmlLower.includes(phrase)
+                );
+
+                if (match) {
+                    // LIMPIEZA DE HTML: Quitamos scripts y estilos que rompen el diseño móvil
+                    let cleanHtml = rawHtml
+                        .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
+                        .replace(/<a /gi, '<a style="display:none" ') // Ocultar links para evitar clics accidentales
+                        .replace(/width="[6-9][0-9]{2}"/gi, 'width="100%"'); // Ajustar tablas anchas
+
+                    emails.push({
+                        subject: subject,
+                        date: message.envelope.date.toLocaleString('es-ES', { timeZone: 'UTC' }),
+                        html: cleanHtml
+                    });
+                }
+            }
         }
-      } else if (payload.body.data) {
-        html = Buffer.from(payload.body.data, "base64").toString("utf-8");
-      }
 
-      const header = (headers, name) => {
-        const h = headers.find(h => h.name.toLowerCase() === name.toLowerCase());
-        return h ? h.value : "";
-      };
+        lock.release();
+        await client.logout();
 
-      const subjectRaw = header(payload.headers, "Subject") || "";
-      const subject = subjectRaw.toLowerCase();
-      const body = html.toLowerCase();
+        // Ordenar para que el más reciente salga primero
+        emails.sort((a, b) => new Date(b.date) - new Date(a.date));
 
-      const match = REQUIRED_PHRASES.some(p => subject.includes(p) || body.includes(p));
-      if (!match) continue;
+        res.json({ emails });
 
-      emails.push({
-        subject: subjectRaw,
-        from: header(payload.headers, "From"),
-        date: header(payload.headers, "Date"),
-        html
-      });
+    } catch (error) {
+        console.error("ERROR CRÍTICO:", error);
+        res.status(500).json({ error: "Fallo en servidor: " + error.message });
     }
-
-    res.json({ emails });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: error.message });
-  }
 });
 
-// ✅ ESCUCHA EN 0.0.0.0 PARA ACCESO EXTERNO
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Servidor listo en puerto ${PORT}`);
+    console.log(`🚀 Servidor filtrado listo para digitalesservicios311@gmail.com`);
 });
