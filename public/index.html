@@ -20,6 +20,9 @@
     .hero h1 { font-size: 24px; margin: 0; }
     .hero span { color: var(--brand); font-weight: 900; }
 
+    /* Espacio para Publicidad */
+    .ad-slot { width: 100%; display: flex; justify-content: center; margin-bottom: 20px; min-height: 60px; overflow: hidden; }
+
     .instrucciones {
       background: var(--card); border-left: 4px solid var(--brand);
       border-radius: 12px; padding: 15px; margin-bottom: 20px;
@@ -29,29 +32,41 @@
     .tipo-dispositivo { color: var(--brand); font-weight: 800; text-transform: uppercase; font-size: 11px; display: block; margin-bottom: 2px; }
 
     .panel { background: var(--card); border-radius: var(--radius); padding: 20px; border: 1px solid var(--border); text-align: center; }
+    
     .btn {
       width: 100%; height: 60px; border: none; border-radius: 12px;
       background: var(--brand); color: #fff; font-weight: 800; font-size: 18px;
       cursor: pointer; transition: 0.2s; margin-bottom: 15px;
+      display: flex; align-items: center; justify-content: center; gap: 10px;
     }
-    .btn:active { transform: scale(0.98); }
+    .btn:active { transform: scale(0.95); background: #b00710; }
     
     .status { font-size: 13px; color: var(--muted); display: flex; align-items: center; justify-content: center; gap: 8px; }
     .spinner { width: 12px; height: 12px; border: 2px solid var(--muted); border-top: 2px solid var(--brand); border-radius: 50%; animation: spin 1s linear infinite; }
     @keyframes spin { 100% { transform: rotate(360deg); } }
 
-    .email-card { background: #ffffff; border-radius: var(--radius); overflow: hidden; margin-top: 20px; text-align: left; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+    .email-card { background: #ffffff; border-radius: var(--radius); overflow: hidden; margin-top: 20px; text-align: left; box-shadow: 0 10px 30px rgba(0,0,0,0.5); animation: fadeIn 0.4s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10s); } to { opacity: 1; transform: translateY(0); } }
+
     .email-header { background: #10132b; color: white; padding: 12px; border-bottom: 3px solid var(--brand); }
     .badge-to { background: var(--brand); color: white; display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; margin-bottom: 5px; }
     .email-header h3 { margin: 0; font-size: 14px; }
     .email-header p { margin: 3px 0 0; font-size: 11px; color: var(--muted); }
-    .email-body { padding: 10px; color: #000; overflow-x: auto; font-size: 14px; }
+    .email-body { padding: 10px; color: #000; overflow-x: auto; }
+    .email-body img { max-width: 100% !important; height: auto !important; }
   </style>
 </head>
 <body>
 
 <div class="container">
   <div class="hero"><h1>🚀 PANEL <span>STREAMING</span></h1></div>
+
+  <div class="ad-slot">
+    <script type="text/javascript">
+      atOptions = { 'key' : 'cceca146ecc06005e59390960db3af7f', 'format' : 'iframe', 'height' : 50, 'width' : 320, 'params' : {} };
+    </script>
+    <script type="text/javascript" src="https://www.highperformanceformat.com/cceca146ecc06005e59390960db3af7f/invoke.js"></script>
+  </div>
 
   <div class="instrucciones">
     <div class="instruccion-item">
@@ -62,15 +77,17 @@
       <span class="tipo-dispositivo">📱 Si estás en un Celular/Tablet:</span>
       <b>2</b> Presiona "Ver temporalmente" y luego "Enviar Email".
     </div>
-    <div style="font-size: 11px; color: var(--muted); text-align: center; border-top: 1px solid var(--border); pt: 5px;">
-      El código aparecerá abajo automáticamente en segundos.
-    </div>
   </div>
 
   <div class="panel">
-    <button class="btn" id="btnBuscar">📩 VER CORREOS</button>
+    <button class="btn" id="btnBuscar">🔄 VER CORREOS</button>
     <div class="status" id="status"><div class="spinner"></div> Buscando automáticamente...</div>
     <div id="result"></div>
+  </div>
+
+  <div class="ad-slot" style="margin-top:20px;">
+    <script async="async" data-cfasync="false" src="https://pl28653744.effectivegatecpm.com/8a7799c7f525d405dcfb1471a70d0b70/invoke.js"></script>
+    <div id="container-8a7799c7f525d405dcfb1471a70d0b70"></div>
   </div>
 </div>
 
@@ -78,20 +95,21 @@
 
 <script>
   let lastEmailCount = 0;
-  let isSearching = false;
+  let manualClick = false;
 
   async function buscarCorreos() {
-    if (isSearching) return;
-    isSearching = true;
-    
     const status = document.getElementById("status");
     const result = document.getElementById("result");
     
+    // Si fue click manual, mostrar respuesta inmediata
+    if(manualClick) status.innerHTML = `<div class="spinner"></div> Refrescando lista...`;
+
     try {
       const res = await fetch("/api/emails", { cache: "no-store" });
       const data = await res.json();
 
       if (data.emails && data.emails.length > 0) {
+        // Alerta de sonido solo si hay correos nuevos
         if (data.emails.length > lastEmailCount) {
           document.getElementById("sound").play().catch(() => {});
         }
@@ -111,28 +129,29 @@
           `;
           result.appendChild(card);
         });
-        status.innerHTML = "✅ Actualizado ahora mismo";
+        status.innerHTML = "✅ Actualizado correctamente";
       } else {
         status.innerHTML = `<div class="spinner"></div> Esperando código nuevo...`;
         result.innerHTML = "";
         lastEmailCount = 0;
       }
     } catch (error) {
-      status.innerHTML = "❌ Intentando conectar...";
+      status.innerHTML = "❌ Error. Reintentando...";
     } finally {
-      isSearching = false;
+      manualClick = false;
     }
   }
 
-  // BOTÓN MANUAL (Siempre funcionando)
+  // BOTÓN MANUAL: Ahora sí refresca visualmente
   document.getElementById('btnBuscar').addEventListener('click', () => {
+    manualClick = true;
     buscarCorreos();
   });
 
   // AUTO-REFRESCO CADA 8 SEGUNDOS
   setInterval(buscarCorreos, 8000);
 
-  // BÚSQUEDA INICIAL
+  // CARGA INICIAL
   buscarCorreos();
 </script>
 
