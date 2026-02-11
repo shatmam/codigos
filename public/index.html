@@ -40,24 +40,22 @@
       background: var(--brand); color: #fff; font-weight: 800; font-size: 18px;
       cursor: pointer; transition: 0.2s; box-shadow: 0 5px 15px rgba(229, 9, 20, 0.3);
     }
-    .btn:disabled { background: #555; cursor: not-allowed; }
     
-    .status { text-align: center; font-size: 14px; color: var(--muted); margin-top: 15px; }
+    .status { text-align: center; font-size: 13px; color: var(--muted); margin-top: 15px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+    
+    /* Animación de carga para el auto-refresco */
+    .spinner { width: 12px; height: 12px; border: 2px solid var(--muted); border-top: 2px solid var(--brand); border-radius: 50%; animation: spin 1s linear infinite; }
+    @keyframes spin { 100% { transform: rotate(360deg); } }
 
     .email-card {
       background: #ffffff; border-radius: var(--radius); overflow: hidden;
       margin-top: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-      animation: fadeIn 0.3s ease;
     }
-    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-
     .email-header { background: #10132b; color: white; padding: 15px; border-bottom: 3px solid var(--brand); }
     .badge-to { background: var(--brand); color: white; display: inline-block; padding: 3px 10px; border-radius: 5px; font-size: 11px; font-weight: bold; margin-bottom: 8px; }
     .email-header h3 { margin: 0; font-size: 15px; }
     .email-header p { margin: 5px 0 0; font-size: 12px; color: var(--muted); }
-
     .email-body { padding: 10px; color: #000; overflow-x: auto; }
-    .email-body img { max-width: 100% !important; }
   </style>
 </head>
 <body>
@@ -73,14 +71,15 @@
   </div>
 
   <div class="instrucciones">
-    <div class="instruccion-item"><b>1</b> TV "ESTOY DE VIAJE" ENVIAR EMAIL</div>
-    <div class="instruccion-item"><b>2</b> TV "ACTUALIZAR HOGAR" ENVIAR EMAIL </div>
-    <div class="instruccion-item"><b>3</b> CELULAR "VER TEMPORALMENTE" ENVIAR EMAIL</div>
+    <div class="instruccion-item"><b>1</b> DALE A "ENVIAR EMAIL" EN TU TV</div>
+    <div class="instruccion-item"><b>2</b> EL CÓDIGO APARECERÁ SOLO AQUÍ</div>
   </div>
 
   <div class="panel">
-    <button class="btn" id="btnBuscar">📩 OBTENER CÓDIGO</button>
-    <div class="status" id="status">Esperando solicitud...</div>
+    <button class="btn" id="btnBuscar">📩 VER CORREOS</button>
+    <div class="status" id="status">
+       <div class="spinner"></div> Buscando automáticamente...
+    </div>
     <div id="result"></div>
   </div>
 
@@ -93,55 +92,56 @@
 <audio id="sound" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg"></audio>
 
 <script>
-  document.getElementById('btnBuscar').addEventListener('click', async () => {
+  let lastEmailCount = 0;
+
+  async function buscarCorreos() {
     const status = document.getElementById("status");
     const result = document.getElementById("result");
-    const btn = document.getElementById("btnBuscar");
     
-    btn.disabled = true;
-    status.innerHTML = "🔍 Buscando código...";
-    result.innerHTML = ""; 
-
     try {
       const res = await fetch("/api/emails", { cache: "no-store" });
       const data = await res.json();
 
-      if (data.error) {
-        status.innerHTML = "❌ " + data.error;
-        btn.disabled = false;
-        return;
+      if (data.emails && data.emails.length > 0) {
+        // Si hay más correos de los que había antes, sonar alerta
+        if (data.emails.length > lastEmailCount) {
+          document.getElementById("sound").play().catch(() => {});
+        }
+        lastEmailCount = data.emails.length;
+
+        result.innerHTML = ""; 
+        data.emails.forEach(e => {
+          const card = document.createElement("div");
+          card.className = "email-card";
+          card.innerHTML = `
+            <div class="email-header">
+              <div class="badge-to">PARA: ${e.to}</div>
+              <h3>${e.subject}</h3>
+              <p>Recibido hoy: ${e.date}</p>
+            </div>
+            <div class="email-body">${e.html}</div>
+          `;
+          result.appendChild(card);
+        });
+        status.innerHTML = "✅ Actualizado justo ahora";
+      } else {
+        status.innerHTML = `<div class="spinner"></div> Esperando código nuevo (últimos 15 min)...`;
+        result.innerHTML = "";
+        lastEmailCount = 0;
       }
-
-      if (!data.emails || data.emails.length === 0) {
-        status.innerHTML = "⏳ No hay códigos nuevos. Envía el email desde tu TV.";
-        btn.disabled = false;
-        return;
-      }
-
-      document.getElementById("sound").play().catch(() => {});
-
-      data.emails.forEach(e => {
-        const card = document.createElement("div");
-        card.className = "email-card";
-        card.innerHTML = `
-          <div class="email-header">
-            <div class="badge-to">PARA: ${e.to}</div>
-            <h3>${e.subject}</h3>
-            <p>Recibido: ${e.date} (Hora RD)</p>
-          </div>
-          <div class="email-body">${e.html}</div>
-        `;
-        result.appendChild(card);
-      });
-
-      status.innerHTML = "✅ ¡Código encontrado!";
-      btn.disabled = false;
-
     } catch (error) {
-      status.innerHTML = "❌ Error. Reintenta.";
-      btn.disabled = false;
+      status.innerHTML = "❌ Intentando conectar...";
     }
-  });
+  }
+
+  // BOTÓN MANUAL
+  document.getElementById('btnBuscar').addEventListener('click', buscarCorreos);
+
+  // AUTO-REFRESCO CADA 10 SEGUNDOS
+  setInterval(buscarCorreos, 10000);
+
+  // BUSCAR AL CARGAR LA PÁGINA
+  buscarCorreos();
 </script>
 
 </body>
