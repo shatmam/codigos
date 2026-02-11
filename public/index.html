@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Panel VIP | Códigos de Acceso</title>
+  <title>Panel VIP | Códigos Netflix</title>
   <style>
     :root {
       --bg: #0b0e1a;
@@ -14,79 +14,50 @@
       --border: #2a2f4a;
       --radius: 16px;
     }
-
     * { box-sizing: border-box; }
     body {
       margin: 0; background: var(--bg); color: var(--text);
-      font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      font-family: 'Segoe UI', Tahoma, sans-serif;
       padding: 20px 15px; display: flex; justify-content: center;
     }
-
     .container { width: 100%; max-width: 550px; }
-
-    /* CABECERA */
     .hero { text-align: center; margin-bottom: 20px; }
     .hero h1 { font-size: 26px; margin: 0; letter-spacing: 1px; }
     .hero span { color: var(--brand); font-weight: 900; }
 
-    /* PUBLICIDAD */
-    .ad-slot { width: 100%; display: flex; justify-content: center; margin-bottom: 20px; min-height: 60px; overflow: hidden; }
+    .ad-slot { width: 100%; display: flex; justify-content: center; margin-bottom: 20px; min-height: 60px; }
 
-    /* INSTRUCCIONES */
     .instrucciones {
       background: var(--card); border-left: 4px solid var(--brand);
       border-radius: 12px; padding: 15px; margin-bottom: 25px;
-      box-shadow: 0 10px 20px rgba(0,0,0,0.3);
     }
-    .instruccion-item {
-      font-size: 13px; font-weight: 700; margin-bottom: 8px;
-      color: var(--muted); display: flex; align-items: center; gap: 10px;
-    }
+    .instruccion-item { font-size: 13px; font-weight: 700; margin-bottom: 8px; color: var(--muted); display: flex; align-items: center; gap: 10px; }
     .instruccion-item b { color: var(--brand); font-size: 18px; }
 
-    /* PANEL DE ACCIÓN */
-    .panel {
-      background: var(--card); border-radius: var(--radius);
-      padding: 20px; border: 1px solid var(--border);
-    }
-
+    .panel { background: var(--card); border-radius: var(--radius); padding: 20px; border: 1px solid var(--border); }
     .btn {
       width: 100%; height: 62px; border: none; border-radius: 12px;
       background: var(--brand); color: #fff; font-weight: 800; font-size: 18px;
-      cursor: pointer; transition: 0.2s; display: flex; align-items: center;
-      justify-content: center; gap: 10px; box-shadow: 0 5px 15px rgba(229, 9, 20, 0.3);
+      cursor: pointer; transition: 0.2s; box-shadow: 0 5px 15px rgba(229, 9, 20, 0.3);
     }
-    .btn:active { transform: scale(0.96); }
+    .btn:disabled { background: #555; cursor: not-allowed; }
     
-    .status {
-      text-align: center; font-size: 14px; color: var(--muted);
-      margin-top: 15px; padding: 10px; background: rgba(255,255,255,0.05);
-      border-radius: 8px; border: 1px dashed var(--border);
-    }
+    .status { text-align: center; font-size: 14px; color: var(--muted); margin-top: 15px; }
 
-    /* TARJETAS DE CORREO */
-    .email-result { margin-top: 25px; }
     .email-card {
-      background: #ffffff; border-radius: var(--radius);
-      overflow: hidden; box-shadow: 0 15px 35px rgba(0,0,0,0.7);
-      margin-bottom: 20px; animation: slideUp 0.4s ease-out;
+      background: #ffffff; border-radius: var(--radius); overflow: hidden;
+      margin-top: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+      animation: fadeIn 0.3s ease;
     }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-    @keyframes slideUp {
-      from { opacity: 0; transform: translateY(20px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
+    .email-header { background: #10132b; color: white; padding: 15px; border-bottom: 3px solid var(--brand); }
+    .badge-to { background: var(--brand); color: white; display: inline-block; padding: 3px 10px; border-radius: 5px; font-size: 11px; font-weight: bold; margin-bottom: 8px; }
+    .email-header h3 { margin: 0; font-size: 15px; }
+    .email-header p { margin: 5px 0 0; font-size: 12px; color: var(--muted); }
 
-    .email-header {
-      background: #10132b; color: white; padding: 15px;
-      border-bottom: 3px solid var(--brand);
-    }
-    .email-header h3 { margin: 0; font-size: 15px; line-height: 1.4; }
-    .email-header p { margin: 5px 0 0; font-size: 11px; color: var(--muted); }
-
-    .email-body { padding: 10px; color: #000; overflow-x: hidden; }
-    /* Forzar que el contenido del mail no se salga de la pantalla */
-    .email-body img, .email-body table { max-width: 100% !important; height: auto !important; }
+    .email-body { padding: 10px; color: #000; overflow-x: auto; }
+    .email-body img { max-width: 100% !important; }
   </style>
 </head>
 <body>
@@ -102,15 +73,15 @@
   </div>
 
   <div class="instrucciones">
-    <div class="instruccion-item"><b>1</b> TV ESTOY DE VIAJE "ENVIAR EMAIL"</div>
-    <div class="instruccion-item"><b>2</b> MOVIL VER TEMPORALMENTE "ENVIAR EMAIL"</div>
-    <div class="instruccion-item"><b>3</b> TV ACTUALIZAR HOGAR "ENVIAR EMAIL"</div>
+    <div class="instruccion-item"><b>1</b> TV "ESTOY DE VIAJE" ENVIAR EMAIL</div>
+    <div class="instruccion-item"><b>2</b> TV "ACTUALIZAR HOGAR" ENVIAR EMAIL </div>
+    <div class="instruccion-item"><b>3</b> CELULAR "VER TEMPORALMENTE" ENVIAR EMAIL</div>
   </div>
 
   <div class="panel">
     <button class="btn" id="btnBuscar">📩 OBTENER CÓDIGO</button>
     <div class="status" id="status">Esperando solicitud...</div>
-    <div id="result" class="email-result"></div>
+    <div id="result"></div>
   </div>
 
   <div class="ad-slot" style="margin-top:20px;">
@@ -127,9 +98,8 @@
     const result = document.getElementById("result");
     const btn = document.getElementById("btnBuscar");
     
-    // Bloquear botón momentáneamente
     btn.disabled = true;
-    status.innerHTML = "🔍 Buscando código de Netflix...";
+    status.innerHTML = "🔍 Buscando código...";
     result.innerHTML = ""; 
 
     try {
@@ -137,18 +107,17 @@
       const data = await res.json();
 
       if (data.error) {
-        status.innerHTML = "⏳ " + data.error;
+        status.innerHTML = "❌ " + data.error;
         btn.disabled = false;
         return;
       }
 
       if (!data.emails || data.emails.length === 0) {
-        status.innerHTML = "❌ No se encontró un código. Asegúrate de enviarlo desde la TV.";
+        status.innerHTML = "⏳ No hay códigos nuevos. Envía el email desde tu TV.";
         btn.disabled = false;
         return;
       }
 
-      // Sonar alerta si hay éxito
       document.getElementById("sound").play().catch(() => {});
 
       data.emails.forEach(e => {
@@ -156,21 +125,20 @@
         card.className = "email-card";
         card.innerHTML = `
           <div class="email-header">
+            <div class="badge-to">PARA: ${e.to}</div>
             <h3>${e.subject}</h3>
-            <p>Recibido: ${e.date}</p>
+            <p>Recibido: ${e.date} (Hora RD)</p>
           </div>
-          <div class="email-body">
-            ${e.html}
-          </div>
+          <div class="email-body">${e.html}</div>
         `;
         result.appendChild(card);
       });
 
-      status.innerHTML = "✅ ¡Código obtenido con éxito!";
+      status.innerHTML = "✅ ¡Código encontrado!";
       btn.disabled = false;
 
     } catch (error) {
-      status.innerHTML = "❌ Error de conexión. Reintenta.";
+      status.innerHTML = "❌ Error. Reintenta.";
       btn.disabled = false;
     }
   });
@@ -178,5 +146,3 @@
 
 </body>
 </html>
-
-
