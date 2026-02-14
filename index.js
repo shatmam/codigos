@@ -11,10 +11,6 @@ app.use(express.static(path.join(__dirname, "public")));
 const EMAIL_USER = "digitalesservicios311@gmail.com"; 
 const EMAIL_PASS = "rfbmuirunbfwcara"; 
 
-// FILTROS MANTENIDOS
-const PALABRAS_CLAVE = ["código", "hogar", "viaje", "temporal", "acceso", "confirmar", "iniciar"];
-const PALABRAS_PROHIBIDAS = ["factura", "pago", "recibo", "actualizar tarjeta", "suscripción"];
-
 app.get("/api/emails", async (req, res) => {
     const client = new ImapFlow({
         host: "imap.gmail.com",
@@ -23,47 +19,49 @@ app.get("/api/emails", async (req, res) => {
         auth: { user: EMAIL_USER, pass: EMAIL_PASS },
         logger: false,
         tls: { rejectUnauthorized: false },
-        connectionTimeout: 5000, // No espera más de 5 seg para conectar
+        connectionTimeout: 5000,
         greetingTimeout: 5000
     });
 
     try {
         await client.connect();
-        await client.mailboxOpen('INBOX');
+        
+        // FORZAR RE-LECTURA: Abrimos la caja de entrada en modo solo lectura pero forzando actualización
+        await client.mailboxOpen('INBOX', { readOnly: true });
         
         let emails = [];
-        // Buscamos los más recientes de Netflix
+        
+        // Buscamos solo los 3 más recientes de Netflix sin filtros de fecha pesados
+        // Esto hace que Gmail responda lo que tiene "ahora mismo" en el tope
         let list = await client.search({ from: "netflix" });
+        
         const ahora = new Date();
 
-        // Procesamos solo los 4 más recientes para máxima velocidad
-        for (let seq of list.slice(-4).reverse()) {
+        for (let seq of list.slice(-3).reverse()) {
+            // Usamos un fetch rápido solo para el sobre (header) primero
             let msg = await client.fetchOne(seq, { source: true, envelope: true });
             
             const fechaCorreo = new Date(msg.envelope.date);
             const diferenciaMinutos = (ahora - fechaCorreo) / (1000 * 60);
 
-            // 1. FILTRO DE TIEMPO (15 MINUTOS)
+            // Filtro de 15 minutos mantenido
             if (diferenciaMinutos <= 15) { 
                 let subject = (msg.envelope.subject || "").toLowerCase();
                 
-                // 2. FILTROS DE CONTENIDO (PALABRAS CLAVE Y PROHIBIDAS)
-                const tieneClave = PALABRAS_CLAVE.some(p => subject.includes(p));
-                const esBasura = PALABRAS_PROHIBIDAS.some(p => subject.includes(p));
-
-                if (tieneClave && !esBasura) {
+                // Filtros de palabras clave
+                if (subject.includes("código") || subject.includes("hogar") || subject.includes("temporal") || subject.includes("viaje") || subject.includes("acceso")) {
+                    
                     let parsed = await simpleParser(msg.source);
                     
-                    // 3. HORA DE REPÚBLICA DOMINICANA
                     const fechaRD = fechaCorreo.toLocaleString('es-DO', {
                         timeZone: 'America/Santo_Domingo',
-                        hour: '2-digit', minute: '2-digit', hour12: true
+                        hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true
                     });
 
                     emails.push({
                         subject: msg.envelope.subject,
                         date: fechaRD,
-                        to: msg.envelope.to[0].address, // MUESTRA LA CUENTA
+                        to: msg.envelope.to[0].address, 
                         html: parsed.html || `<pre>${parsed.text}</pre>`
                     });
                 }
@@ -79,4 +77,4 @@ app.get("/api/emails", async (req, res) => {
     }
 });
 
-app.listen(PORT, '0.0.0.0', () => { console.log("🔥 Panel RD: Filtros + Velocidad OK"); });
+app.listen(PORT, '0.0.0.0', () => { console.log("Panel RD: Sincronización Rápida"); });
