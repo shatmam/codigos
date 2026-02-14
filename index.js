@@ -11,6 +11,7 @@ app.use(express.static(path.join(__dirname, "public")));
 const EMAIL_USER = "digitalesservicios311@gmail.com"; 
 const EMAIL_PASS = "rfbmuirunbfwcara"; 
 
+// FILTROS MANTENIDOS
 const PALABRAS_CLAVE = ["código", "hogar", "viaje", "temporal", "acceso", "confirmar", "iniciar"];
 const PALABRAS_PROHIBIDAS = ["factura", "pago", "recibo", "actualizar tarjeta", "suscripción"];
 
@@ -21,7 +22,9 @@ app.get("/api/emails", async (req, res) => {
         secure: true,
         auth: { user: EMAIL_USER, pass: EMAIL_PASS },
         logger: false,
-        tls: { rejectUnauthorized: false }
+        tls: { rejectUnauthorized: false },
+        connectionTimeout: 5000, // No espera más de 5 seg para conectar
+        greetingTimeout: 5000
     });
 
     try {
@@ -29,36 +32,29 @@ app.get("/api/emails", async (req, res) => {
         await client.mailboxOpen('INBOX');
         
         let emails = [];
-        
-        // --- CAMBIO CLAVE: Buscar correos de las últimas 24 horas para no fallar ---
-        let yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
-        
-        let list = await client.search({ 
-            from: "netflix",
-            since: yesterday 
-        });
-        
+        // Buscamos los más recientes de Netflix
+        let list = await client.search({ from: "netflix" });
         const ahora = new Date();
 
-        // Revisamos los últimos 5 de la lista
-        for (let seq of list.slice(-5).reverse()) {
+        // Procesamos solo los 4 más recientes para máxima velocidad
+        for (let seq of list.slice(-4).reverse()) {
             let msg = await client.fetchOne(seq, { source: true, envelope: true });
             
             const fechaCorreo = new Date(msg.envelope.date);
-            // Calculamos diferencia en segundos para más precisión
-            const diferenciaSegundos = Math.floor((ahora - fechaCorreo) / 1000);
-            const quinceMinutos = 15 * 60;
+            const diferenciaMinutos = (ahora - fechaCorreo) / (1000 * 60);
 
-            // FILTRO DE 15 MINUTOS (900 segundos)
-            if (diferenciaSegundos <= quinceMinutos) { 
+            // 1. FILTRO DE TIEMPO (15 MINUTOS)
+            if (diferenciaMinutos <= 15) { 
                 let subject = (msg.envelope.subject || "").toLowerCase();
+                
+                // 2. FILTROS DE CONTENIDO (PALABRAS CLAVE Y PROHIBIDAS)
                 const tieneClave = PALABRAS_CLAVE.some(p => subject.includes(p));
                 const esBasura = PALABRAS_PROHIBIDAS.some(p => subject.includes(p));
 
                 if (tieneClave && !esBasura) {
                     let parsed = await simpleParser(msg.source);
                     
+                    // 3. HORA DE REPÚBLICA DOMINICANA
                     const fechaRD = fechaCorreo.toLocaleString('es-DO', {
                         timeZone: 'America/Santo_Domingo',
                         hour: '2-digit', minute: '2-digit', hour12: true
@@ -67,7 +63,7 @@ app.get("/api/emails", async (req, res) => {
                     emails.push({
                         subject: msg.envelope.subject,
                         date: fechaRD,
-                        to: msg.envelope.to[0].address, 
+                        to: msg.envelope.to[0].address, // MUESTRA LA CUENTA
                         html: parsed.html || `<pre>${parsed.text}</pre>`
                     });
                 }
@@ -78,11 +74,9 @@ app.get("/api/emails", async (req, res) => {
         res.json({ emails });
 
     } catch (error) {
-        console.error("Error:", error.message);
+        try { await client.logout(); } catch(e) {}
         res.status(500).json({ error: "Buscando..." });
     }
 });
 
-app.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 Panel optimizado funcionando`);
-});
+app.listen(PORT, '0.0.0.0', () => { console.log("🔥 Panel RD: Filtros + Velocidad OK"); });
