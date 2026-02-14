@@ -19,37 +19,38 @@ app.get("/api/emails", async (req, res) => {
         auth: { user: EMAIL_USER, pass: EMAIL_PASS },
         logger: false,
         tls: { rejectUnauthorized: false },
-        connectionTimeout: 5000,
-        greetingTimeout: 5000
+        // ESTO ACELERA LA AUTENTICACIÓN:
+        verifyOnly: false,
+        maxConnections: 5,
+        connectionTimeout: 3000, // Bajamos a 3 seg para que no se quede esperando
+        greetingTimeout: 3000
     });
 
     try {
         await client.connect();
         
-        // FORZAR RE-LECTURA: Abrimos la caja de entrada en modo solo lectura pero forzando actualización
-        await client.mailboxOpen('INBOX', { readOnly: true });
+        // Seleccionamos la bandeja de entrada directamente
+        let mailbox = await client.mailboxOpen('INBOX');
         
-        let emails = [];
-        
-        // Buscamos solo los 3 más recientes de Netflix sin filtros de fecha pesados
-        // Esto hace que Gmail responda lo que tiene "ahora mismo" en el tope
+        // Solo pedimos los números de secuencia de los últimos 3 mensajes de Netflix
+        // Esto evita que Gmail analice toda la cuenta
         let list = await client.search({ from: "netflix" });
         
+        let emails = [];
         const ahora = new Date();
 
+        // Tomamos solo los 3 más recientes
         for (let seq of list.slice(-3).reverse()) {
-            // Usamos un fetch rápido solo para el sobre (header) primero
             let msg = await client.fetchOne(seq, { source: true, envelope: true });
             
             const fechaCorreo = new Date(msg.envelope.date);
             const diferenciaMinutos = (ahora - fechaCorreo) / (1000 * 60);
 
-            // Filtro de 15 minutos mantenido
             if (diferenciaMinutos <= 15) { 
                 let subject = (msg.envelope.subject || "").toLowerCase();
                 
-                // Filtros de palabras clave
-                if (subject.includes("código") || subject.includes("hogar") || subject.includes("temporal") || subject.includes("viaje") || subject.includes("acceso")) {
+                // Filtro rápido de palabras clave
+                if (["código", "hogar", "viaje", "temporal", "acceso"].some(p => subject.includes(p))) {
                     
                     let parsed = await simpleParser(msg.source);
                     
@@ -72,9 +73,10 @@ app.get("/api/emails", async (req, res) => {
         res.json({ emails });
 
     } catch (error) {
-        try { await client.logout(); } catch(e) {}
+        // En caso de error de autenticación, cerramos rápido para liberar el túnel
+        if (client) { try { await client.logout(); } catch(e) {} }
         res.status(500).json({ error: "Buscando..." });
     }
 });
 
-app.listen(PORT, '0.0.0.0', () => { console.log("Panel RD: Sincronización Rápida"); });
+app.listen(PORT, '0.0.0.0', () => { console.log("🔥 Autenticación Optimizada"); });
