@@ -8,13 +8,11 @@ const PORT = process.env.PORT || 3000;
 
 app.use(express.static(path.join(__dirname, "public")));
 
-/* ================= CONFIGURACIÓN ================= */
 const EMAIL_USER = "digitalesservicios311@gmail.com"; 
 const EMAIL_PASS = "rfbmuirunbfwcara"; 
 
 const PALABRAS_CLAVE = ["código", "hogar", "viaje", "temporal", "acceso", "confirmar", "iniciar"];
 const PALABRAS_PROHIBIDAS = ["factura", "pago", "recibo", "actualizar tarjeta", "suscripción"];
-/* ================================================= */
 
 app.get("/api/emails", async (req, res) => {
     const client = new ImapFlow({
@@ -31,26 +29,29 @@ app.get("/api/emails", async (req, res) => {
         await client.mailboxOpen('INBOX');
         
         let emails = [];
-
-        // --- MEJORA DE VELOCIDAD AQUÍ ---
-        // Buscamos solo correos de Netflix que llegaron HOY. 
-        // Esto hace que Gmail responda 3 veces más rápido.
+        
+        // --- CAMBIO CLAVE: Buscar correos de las últimas 24 horas para no fallar ---
+        let yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        
         let list = await client.search({ 
             from: "netflix",
-            since: new Date() 
+            since: yesterday 
         });
         
         const ahora = new Date();
 
-        // Solo procesamos los últimos 5 para no saturar la memoria de Railway
+        // Revisamos los últimos 5 de la lista
         for (let seq of list.slice(-5).reverse()) {
             let msg = await client.fetchOne(seq, { source: true, envelope: true });
             
             const fechaCorreo = new Date(msg.envelope.date);
-            const diferenciaMinutos = (ahora - fechaCorreo) / (1000 * 60);
+            // Calculamos diferencia en segundos para más precisión
+            const diferenciaSegundos = Math.floor((ahora - fechaCorreo) / 1000);
+            const quinceMinutos = 15 * 60;
 
-            // Filtro estricto de 15 minutos
-            if (diferenciaMinutos <= 15) { 
+            // FILTRO DE 15 MINUTOS (900 segundos)
+            if (diferenciaSegundos <= quinceMinutos) { 
                 let subject = (msg.envelope.subject || "").toLowerCase();
                 const tieneClave = PALABRAS_CLAVE.some(p => subject.includes(p));
                 const esBasura = PALABRAS_PROHIBIDAS.some(p => subject.includes(p));
@@ -77,11 +78,11 @@ app.get("/api/emails", async (req, res) => {
         res.json({ emails });
 
     } catch (error) {
-        console.error("Error de conexión:", error.message);
-        res.status(500).json({ error: "Buscando código..." });
+        console.error("Error:", error.message);
+        res.status(500).json({ error: "Buscando..." });
     }
 });
 
 app.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 Servidor optimizado en puerto ${PORT}`);
+    console.log(`🚀 Panel optimizado funcionando`);
 });
