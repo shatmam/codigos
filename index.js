@@ -11,16 +11,11 @@ app.use(express.static(path.join(__dirname, "public")));
 const EMAIL_USER = "digitalesservicios311@gmail.com"; 
 const EMAIL_PASS = "rfbmuirunbfwcara"; 
 
-// 🟢 PALABRAS PERMITIDAS (Solo lo que sirve para entrar)
-const PALABRAS_CLAVE = ["código", "hogar", "viaje", "temporal", "acceso", "confirmar", "iniciar"];
+// 🟢 LO QUE SÍ QUEREMOS VER
+const PALABRAS_PERMITIDAS = ["código", "codigo", "temporal", "hogar", "viaje", "acceso"];
 
-// 🔴 FILTRO DE SEGURIDAD (Si el correo tiene alguna de estas, SE BLOQUEA)
-const PALABRAS_PROHIBIDAS = [
-    "factura", "pago", "recibo", "actualizar tarjeta", "suscripción", 
-    "cambio de contraseña", "cambio de correo", "actualizada", "modificada", 
-    "teléfono", "restablecer", "reestablecer", "solicitud", "perfil", "miembro",
-    "información de tu cuenta", "cambio en tu cuenta", "cambio de información" // <--- NUEVAS FRASES CRÍTICAS
-];
+// 🔴 LO QUE QUEREMOS BLOQUEAR (Solo si NO es un código)
+const PALABRAS_PROHIBIDAS = ["contraseña", "password", "correo", "email", "teléfono", "perfil", "factura", "pago"];
 
 app.get("/api/emails", async (req, res) => {
     const client = new ImapFlow({
@@ -42,28 +37,26 @@ app.get("/api/emails", async (req, res) => {
         let list = await client.search({ from: "netflix" });
         const ahora = new Date();
 
+        // Revisamos los últimos 5 de Netflix
         for (let seq of list.slice(-5).reverse()) {
             let msg = await client.fetchOne(seq, { source: true, envelope: true });
             const fechaCorreo = new Date(msg.envelope.date);
             const diferenciaMinutos = (ahora - fechaCorreo) / (1000 * 60);
 
+            // 1. Filtro de tiempo: máximo 15 minutos de antigüedad
             if (diferenciaMinutos <= 15) { 
                 let subject = (msg.envelope.subject || "").toLowerCase();
                 
-                // Extraer también el texto del cuerpo para buscar palabras prohibidas ahí dentro
-                let parsed = await simpleParser(msg.source);
-                let cuerpoTexto = (parsed.text || "").toLowerCase();
+                // 2. Lógica de filtrado inteligente:
+                // Si dice "CÓDIGO", pasa directo (es lo que el cliente necesita).
+                const esCodigo = PALABRAS_PERMITIDAS.some(p => subject.includes(p));
                 
-                // 1. Verificar si tiene palabras clave en el ASUNTO
-                const tieneClave = PALABRAS_CLAVE.some(p => subject.includes(p));
-                
-                // 2. Verificar si es BASURA (Buscamos en el ASUNTO y en el CUERPO del correo)
-                const esBasura = PALABRAS_PROHIBIDAS.some(p => 
-                    subject.includes(p) || cuerpoTexto.includes(p)
-                );
+                // Si NO dice código y habla de cambios de cuenta, se bloquea.
+                const esCambioDeCuenta = PALABRAS_PROHIBIDAS.some(p => subject.includes(p));
 
-                // Solo permitimos si tiene la clave Y NO ES BASURA
-                if (tieneClave && !esBasura) {
+                if (esCodigo || !esCambioDeCuenta) {
+                    let parsed = await simpleParser(msg.source);
+                    
                     const fechaRD = fechaCorreo.toLocaleString('es-DO', {
                         timeZone: 'America/Santo_Domingo',
                         hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true
@@ -88,4 +81,4 @@ app.get("/api/emails", async (req, res) => {
     }
 });
 
-app.listen(PORT, '0.0.0.0', () => { console.log("🔥 Panel Blindado: Filtro de seguridad nivel máximo"); });
+app.listen(PORT, '0.0.0.0', () => { console.log("✅ Panel Funcionando - Filtros Optimizados"); });
