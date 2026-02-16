@@ -11,6 +11,16 @@ app.use(express.static(path.join(__dirname, "public")));
 const EMAIL_USER = "digitalesservicios311@gmail.com"; 
 const EMAIL_PASS = "rfbmuirunbfwcara"; 
 
+// PALABRAS QUE SÍ QUEREMOS (Códigos)
+const PALABRAS_CLAVE = ["código", "hogar", "viaje", "temporal", "acceso", "confirmar", "iniciar"];
+
+// PALABRAS QUE BLOQUEAMOS (Facturas, Cambios realizados y SOLICITUDES de cambio)
+const PALABRAS_PROHIBIDAS = [
+    "factura", "pago", "recibo", "actualizar tarjeta", "suscripción", 
+    "cambio de contraseña", "cambios", "actualizada", "cambio", 
+    "teléfono", "restablecer", "reestablecer", "solicitud", "perfil", "miembro"
+];
+
 app.get("/api/emails", async (req, res) => {
     const client = new ImapFlow({
         host: "imap.gmail.com",
@@ -19,39 +29,34 @@ app.get("/api/emails", async (req, res) => {
         auth: { user: EMAIL_USER, pass: EMAIL_PASS },
         logger: false,
         tls: { rejectUnauthorized: false },
-        // ESTO ACELERA LA AUTENTICACIÓN:
-        verifyOnly: false,
-        maxConnections: 5,
-        connectionTimeout: 3000, // Bajamos a 3 seg para que no se quede esperando
-        greetingTimeout: 3000
+        connectionTimeout: 5000,
+        greetingTimeout: 5000
     });
 
     try {
         await client.connect();
-        
-        // Seleccionamos la bandeja de entrada directamente
-        let mailbox = await client.mailboxOpen('INBOX');
-        
-        // Solo pedimos los números de secuencia de los últimos 3 mensajes de Netflix
-        // Esto evita que Gmail analice toda la cuenta
-        let list = await client.search({ from: "netflix" });
+        await client.mailboxOpen('INBOX');
         
         let emails = [];
+        let list = await client.search({ from: "netflix" });
         const ahora = new Date();
 
-        // Tomamos solo los 3 más recientes
-        for (let seq of list.slice(-3).reverse()) {
+        for (let seq of list.slice(-4).reverse()) {
             let msg = await client.fetchOne(seq, { source: true, envelope: true });
-            
             const fechaCorreo = new Date(msg.envelope.date);
             const diferenciaMinutos = (ahora - fechaCorreo) / (1000 * 60);
 
+            // 1. Filtro de 15 minutos
             if (diferenciaMinutos <= 15) { 
                 let subject = (msg.envelope.subject || "").toLowerCase();
                 
-                // Filtro rápido de palabras clave
-                if (["código", "hogar", "viaje", "temporal", "acceso"].some(p => subject.includes(p))) {
-                    
+                // 2. Debe tener palabras de código
+                const tieneClave = PALABRAS_CLAVE.some(p => subject.includes(p));
+                
+                // 3. NO debe tener palabras de cambio o facturación
+                const esBasura = PALABRAS_PROHIBIDAS.some(p => subject.includes(p));
+
+                if (tieneClave && !esBasura) {
                     let parsed = await simpleParser(msg.source);
                     
                     const fechaRD = fechaCorreo.toLocaleString('es-DO', {
@@ -73,10 +78,9 @@ app.get("/api/emails", async (req, res) => {
         res.json({ emails });
 
     } catch (error) {
-        // En caso de error de autenticación, cerramos rápido para liberar el túnel
         if (client) { try { await client.logout(); } catch(e) {} }
         res.status(500).json({ error: "Buscando..." });
     }
 });
 
-app.listen(PORT, '0.0.0.0', () => { console.log("🔥 Autenticación Optimizada"); });
+app.listen(PORT, '0.0.0.0', () => { console.log("🔥 Filtro Total: Bloqueando solicitudes de cambio"); });
