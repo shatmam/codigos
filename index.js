@@ -26,51 +26,58 @@ app.get("/api/emails", async (req, res) => {
         await client.mailboxOpen('INBOX');
         
         let emails = [];
-        
-        // BUSQUEDA DIRECTA: Buscamos correos de Netflix que tengan la palabra "código" o "temporal"
-        // Esto es mucho más eficiente que filtrar uno por uno después
-        let list = await client.search({
-            from: "netflix",
-            or: [
-                { subject: 'código' },
-                { subject: 'temporal' },
-                { subject: 'hogar' }
-            ]
-        });
+        // Buscamos correos de netflix con palabras clave
+        let list = await client.search({ from: "netflix" });
 
-        // Tomamos los últimos 5 resultados encontrados
-        for (let seq of list.slice(-5).reverse()) {
+        // Revisamos los últimos 10 de Netflix
+        for (let seq of list.slice(-10).reverse()) {
             let msg = await client.fetchOne(seq, { source: true, envelope: true });
             
-            // Filtro de seguridad rápido para NO mostrar inicios de sesión o cambios
             let subject = (msg.envelope.subject || "").toLowerCase();
-            if (subject.includes("inicio") || subject.includes("contraseña") || subject.includes("cuenta")) {
-                continue; 
-            }
-
             let parsed = await simpleParser(msg.source);
-            
-            const fechaRD = new Date(msg.envelope.date).toLocaleString('es-DO', {
-                timeZone: 'America/Santo_Domingo',
-                hour: '2-digit', minute: '2-digit', hour12: true
-            });
+            let contenido = (parsed.text || "").toLowerCase();
 
-            emails.push({
-                subject: msg.envelope.subject,
-                date: fechaRD,
-                to: msg.envelope.to[0].address, 
-                html: parsed.html || `<pre>${parsed.text}</pre>`
-            });
+            // 🚫 FILTRO DE BLOQUEO (Si dice algo de esto, NO PASA)
+            const esCorreoDeCambio = 
+                subject.includes("cambio") || 
+                subject.includes("cuenta") || 
+                subject.includes("contraseña") || 
+                subject.includes("password") ||
+                subject.includes("sesión") ||
+                contenido.includes("cambiar la información") ||
+                contenido.includes("restablecer tu contraseña");
+
+            // ✅ FILTRO DE PERMISO (Solo si es algo de acceso)
+            const esAccesoUtil = 
+                subject.includes("código") || 
+                subject.includes("codigo") || 
+                subject.includes("temporal") || 
+                subject.includes("hogar") || 
+                subject.includes("viaje");
+
+            // REGLA: Tiene que ser de acceso Y NO ser de cambio
+            if (esAccesoUtil && !esCorreoDeCambio) {
+                const fechaRD = new Date(msg.envelope.date).toLocaleString('es-DO', {
+                    timeZone: 'America/Santo_Domingo',
+                    hour: '2-digit', minute: '2-digit', hour12: true
+                });
+
+                emails.push({
+                    subject: msg.envelope.subject,
+                    date: fechaRD,
+                    to: msg.envelope.to[0].address, 
+                    html: parsed.html || `<pre>${parsed.text}</pre>`
+                });
+            }
         }
 
         await client.logout();
         res.json({ emails });
 
     } catch (error) {
-        console.error(error);
         if (client) await client.logout().catch(() => {});
-        res.status(500).json({ error: "Error buscando correos" });
+        res.status(500).json({ error: "Reintentando..." });
     }
 });
 
-app.listen(PORT, '0.0.0.0', () => { console.log("🚀 Buscador de rescate activo"); });
+app.listen(PORT, '0.0.0.0', () => { console.log("🚀 Panel Blindado y Funcionando"); });
