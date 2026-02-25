@@ -11,11 +11,6 @@ app.use(express.static(path.join(__dirname, "public")));
 const EMAIL_USER = "digitalesservicios311@gmail.com"; 
 const EMAIL_PASS = "rfbmuirunbfwcara"; 
 
-// Palabras clave que SI queremos
-const PERMITIDOS = ["hogar", "viaje", "temporal", "acceso", "código", "codigo"];
-// Lo que BLOQUEAMOS (Inicios de sesión y cambios)
-const PROHIBIDOS = ["inicio de ses", "iniciar ses", "cambio en tu cuenta", "restablecer", "reestablecer"];
-
 app.get("/api/emails", async (req, res) => {
     const client = new ImapFlow({
         host: "imap.gmail.com",
@@ -23,65 +18,59 @@ app.get("/api/emails", async (req, res) => {
         secure: true,
         auth: { user: EMAIL_USER, pass: EMAIL_PASS },
         logger: false,
-        tls: { rejectUnauthorized: false },
-        connectionTimeout: 10000, // Más tiempo para evitar crashes por lentitud
+        tls: { rejectUnauthorized: false }
     });
 
     try {
         await client.connect();
-        let lock = await client.getMailboxLock('INBOX');
+        await client.mailboxOpen('INBOX');
         
         let emails = [];
-        // Buscamos solo los últimos 8 correos de Netflix para no saturar la memoria
-        let list = await client.search({ from: "netflix" });
-        const ahora = new Date();
+        
+        // BUSQUEDA DIRECTA: Buscamos correos de Netflix que tengan la palabra "código" o "temporal"
+        // Esto es mucho más eficiente que filtrar uno por uno después
+        let list = await client.search({
+            from: "netflix",
+            or: [
+                { subject: 'código' },
+                { subject: 'temporal' },
+                { subject: 'hogar' }
+            ]
+        });
 
-        for (let seq of list.slice(-8).reverse()) {
+        // Tomamos los últimos 5 resultados encontrados
+        for (let seq of list.slice(-5).reverse()) {
             let msg = await client.fetchOne(seq, { source: true, envelope: true });
-            const fechaCorreo = new Date(msg.envelope.date);
-            const diferenciaMinutos = (ahora - fechaCorreo) / (1000 * 60);
-
-            // Filtro de tiempo: 15 minutos
-            if (diferenciaMinutos <= 15) { 
-                let subject = (msg.envelope.subject || "").toLowerCase();
-                
-                // Primero revisamos el asunto que es lo más rápido
-                const esProhibidoAsunto = PROHIBIDOS.some(p => subject.includes(p));
-                const esPermitidoAsunto = PERMITIDOS.some(p => subject.includes(p));
-
-                if (!esProhibidoAsunto && esPermitidoAsunto) {
-                    let parsed = await simpleParser(msg.source);
-                    let contenido = (parsed.text || "").toLowerCase();
-
-                    // Doble check en el contenido para estar seguros
-                    const esBasuraCuerpo = PROHIBIDOS.some(p => contenido.includes(p));
-                    
-                    if (!esBasuraCuerpo) {
-                        const fechaRD = fechaCorreo.toLocaleString('es-DO', {
-                            timeZone: 'America/Santo_Domingo',
-                            hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true
-                        });
-
-                        emails.push({
-                            subject: msg.envelope.subject,
-                            date: fechaRD,
-                            to: msg.envelope.to[0].address, 
-                            html: parsed.html || `<pre>${parsed.text}</pre>`
-                        });
-                    }
-                }
+            
+            // Filtro de seguridad rápido para NO mostrar inicios de sesión o cambios
+            let subject = (msg.envelope.subject || "").toLowerCase();
+            if (subject.includes("inicio") || subject.includes("contraseña") || subject.includes("cuenta")) {
+                continue; 
             }
+
+            let parsed = await simpleParser(msg.source);
+            
+            const fechaRD = new Date(msg.envelope.date).toLocaleString('es-DO', {
+                timeZone: 'America/Santo_Domingo',
+                hour: '2-digit', minute: '2-digit', hour12: true
+            });
+
+            emails.push({
+                subject: msg.envelope.subject,
+                date: fechaRD,
+                to: msg.envelope.to[0].address, 
+                html: parsed.html || `<pre>${parsed.text}</pre>`
+            });
         }
-        lock.release();
+
         await client.logout();
         res.json({ emails });
 
     } catch (error) {
-        console.error("Error en IMAP:", error);
-        if (client) { try { await client.logout(); } catch(e) {} }
-        // Enviamos un JSON vacío en lugar de romper la app
-        res.status(500).json({ emails: [], error: "Reintentando conexión..." });
+        console.error(error);
+        if (client) await client.logout().catch(() => {});
+        res.status(500).json({ error: "Error buscando correos" });
     }
 });
 
-app.listen(PORT, '0.0.0.0', () => { console.log("🚀 Panel Estable y Filtrado"); });
+app.listen(PORT, '0.0.0.0', () => { console.log("🚀 Buscador de rescate activo"); });
