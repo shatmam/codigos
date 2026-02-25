@@ -11,14 +11,14 @@ app.use(express.static(path.join(__dirname, "public")));
 const EMAIL_USER = "digitalesservicios311@gmail.com"; 
 const EMAIL_PASS = "rfbmuirunbfwcara"; 
 
-// 🟢 LO ÚNICO QUE QUEREMOS VER (Códigos de desbloqueo de casa/viaje)
-const SOLO_ESTO = ["hogar", "viaje", "temporal", "acceso"];
+// 🟢 LO QUE QUEREMOS (Códigos de desbloqueo)
+// Añadimos variaciones para que no falle
+const SOLO_ESTO = ["hogar", "viaje", "temporal", "acceso", "código", "codigo"];
 
-// 🔴 LO QUE QUEREMOS MATAR (Cambios, Inicios de sesión y códigos de sesión)
+// 🔴 LO QUE BLOQUEAMOS (Cambios y avisos de inicio de sesión)
 const BLOQUEAR_SIEMPRE = [
-    "iniciar sesión", "iniciar sesion", "inicio de sesión", "inicio de sesion",
-    "cambio en tu cuenta", "cambiar la información", "restablecer", "reestablecer",
-    "solicitud de código", "nuevo inicio", "perfil", "miembro"
+    "inicio de sesión", "inicio de sesion", "iniciar sesión", "iniciar sesion",
+    "cambio en tu cuenta", "cambiar la información", "restablecer", "reestablecer"
 ];
 
 app.get("/api/emails", async (req, res) => {
@@ -26,7 +26,7 @@ app.get("/api/emails", async (req, res) => {
         host: "imap.gmail.com", port: 993, secure: true,
         auth: { user: EMAIL_USER, pass: EMAIL_PASS },
         logger: false, tls: { rejectUnauthorized: false },
-        connectionTimeout: 5000
+        connectionTimeout: 8000 // Aumentamos un poco el tiempo de espera
     });
 
     try {
@@ -37,50 +37,39 @@ app.get("/api/emails", async (req, res) => {
         let list = await client.search({ from: "netflix" });
         const ahora = new Date();
 
-        for (let seq of list.slice(-8).reverse()) { // Revisamos un par más por si acaso
+        // Revisamos los últimos 10 para asegurar que no se nos pierda ninguno
+        for (let seq of list.slice(-10).reverse()) {
             let msg = await client.fetchOne(seq, { source: true, envelope: true });
             const fechaCorreo = new Date(msg.envelope.date);
             const diferenciaMinutos = (ahora - fechaCorreo) / (1000 * 60);
 
+            // Filtro de 15 minutos
             if (diferenciaMinutos <= 15) { 
                 let subject = (msg.envelope.subject || "").toLowerCase();
                 let parsed = await simpleParser(msg.source);
                 let contenido = (parsed.text || "").toLowerCase();
 
-                // 1. ¿Es basura o inicio de sesión?
-                const esProhibido = BLOQUEAR_SIEMPRE.some(frase => 
+                // 1. ¿Es un correo de cambio o simple aviso de sesión?
+                const esBasura = BLOQUEAR_SIEMPRE.some(frase => 
                     subject.includes(frase) || contenido.includes(frase)
                 );
                 
-                // 2. ¿Es un código de los que SÍ nos interesan?
+                // 2. ¿Es un código de acceso o temporal?
                 const esCodigoValido = SOLO_ESTO.some(p => 
                     subject.includes(p) || contenido.includes(p)
                 );
 
-                // REGLA FINAL: Si es prohibido, fuera. Si no tiene las palabras de hogar/viaje, fuera.
-                if (esProhibido || !esCodigoValido) {
-                    continue; 
+                // REGLA: Si NO es basura Y tiene alguna palabra de acceso/código, lo mostramos.
+                if (!esBasura && esCodigoValido) {
+                    const fechaRD = fechaCorreo.toLocaleString('es-DO', {
+                        timeZone: 'America/Santo_Domingo',
+                        hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true
+                    });
+
+                    emails.push({
+                        subject: msg.envelope.subject,
+                        date: fechaRD,
+                        to: msg.envelope.to[0].address, 
+                        html: parsed.html || `<pre>${parsed.text}</pre>`
+                    });
                 }
-
-                const fechaRD = fechaCorreo.toLocaleString('es-DO', {
-                    timeZone: 'America/Santo_Domingo',
-                    hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true
-                });
-
-                emails.push({
-                    subject: msg.envelope.subject,
-                    date: fechaRD,
-                    to: msg.envelope.to[0].address, 
-                    html: parsed.html || `<pre>${parsed.text}</pre>`
-                });
-            }
-        }
-        await client.logout();
-        res.json({ emails });
-    } catch (error) {
-        if (client) { try { await client.logout(); } catch(e) {} }
-        res.status(500).json({ error: "Buscando..." });
-    }
-});
-
-app.listen(PORT, '0.0.0.0', () => { console.log("🔥 Panel Filtrado: Solo Hogar y Viaje"); });
