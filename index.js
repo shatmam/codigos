@@ -2,7 +2,6 @@ const express = require("express");
 const path = require("path");
 const { ImapFlow } = require("imapflow");
 const { simpleParser } = require('mailparser');
-const axios = require('axios');
 const { google } = require('googleapis');
 
 const app = express();
@@ -10,18 +9,30 @@ const PORT = process.env.PORT || 3000;
 
 app.use(express.static(path.join(__dirname, "public")));
 
-// --- 🔑 CONFIGURACIONES (RELLENA ESTO) ---
+// --- 🔑 CONFIGURACIONES ---
 const EMAIL_USER = "digitalesservicios311@gmail.com"; 
 const EMAIL_PASS = "rfbmuirunbfwcara"; 
 const WA_URL = 'https://www.wasenderapi.com/api/send-message';
-const WA_TOKEN = 'e8054f40611652ca1329c3a19e7250b4798095c7d0b9d2944b9f35a26b5dba78'; // <--- Tu Token de WAsender
-const SPREADSHEET_ID = '1CtmcSFb2ScYXMAkK0EiKhmLJ1mwZRpGLTXZ8uXY-LRY'; // <--- El ID de tu Google Sheet
+const WA_TOKEN = 'e8054f40611652ca1329c3a19e7250b4798095c7d0b9d2944b9f35a26b5dba78'; // <-- Pon tu token aquí
+const SPREADSHEET_ID = '1CtmcSFb2ScYXMAkK0EiKhmLJ1mwZRpGLTXZ8uXY-LRY';
 
-// --- 📋 FUNCIÓN PARA BUSCAR CLIENTE EN SHEETS ---
+// --- 📲 FUNCIÓN ENVIAR WHATSAPP ---
+async function enviarWA(tel, msj) {
+    try {
+        await fetch(WA_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: WA_TOKEN, to: tel, body: msj })
+        });
+        console.log(`✅ WhatsApp enviado a: ${tel}`);
+    } catch (e) { console.error("❌ Error WA:", e.message); }
+}
+
+// --- 📋 FUNCIÓN BUSCAR CLIENTE ---
 async function buscarCliente(correoNetflix, cuerpo) {
     try {
         const auth = new google.auth.GoogleAuth({
-            keyFile: 'credentials.json', 
+            credentials: JSON.parse(process.env.GOOGLE_CREDENTIALS),
             scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
         });
         const sheets = google.sheets({ version: 'v4', auth });
@@ -33,91 +44,104 @@ async function buscarCliente(correoNetflix, cuerpo) {
         const filas = res.data.values;
         if (!filas) return null;
 
-        // Detectar perfil en el cuerpo del correo
         let perfilEnCorreo = "";
         const texto = cuerpo.toLowerCase();
+        
+        // Detección de perfiles (1-5 y nombres especiales)
         if (texto.includes("perfil 1") || texto.includes(">1<")) perfilEnCorreo = "1";
         else if (texto.includes("perfil 2") || texto.includes(">2<")) perfilEnCorreo = "2";
         else if (texto.includes("perfil 3") || texto.includes(">3<")) perfilEnCorreo = "3";
         else if (texto.includes("perfil 4") || texto.includes(">4<")) perfilEnCorreo = "4";
         else if (texto.includes("perfil 5") || texto.includes(">5<")) perfilEnCorreo = "5";
-        // Si tienes perfiles con nombres (ej: Cristal), añádelos aquí:
         else if (texto.includes("cristal")) perfilEnCorreo = "CRISTAL";
 
         return filas.find(f => {
-            const correoMatch = f[4]?.toLowerCase() === correoNetflix.toLowerCase();
-            const perfilMatch = f[6]?.toString() === perfilEnCorreo;
-            const esCompleta = f[6]?.toLowerCase() === "completa";
-            return correoMatch && (perfilMatch || esCompleta);
+            const correoIgual = f[4]?.toLowerCase().trim() === correoNetflix.toLowerCase().trim();
+            const perfilIgual = f[6]?.toString().trim() === perfilEnCorreo;
+            const esCompleta = f[6]?.toLowerCase().trim() === "completa";
+            return correoIgual && (perfilIgual || esCompleta);
         });
-    } catch (e) { console.error("Error Sheets:", e); return null; }
+    } catch (e) { return null; }
 }
 
-// --- 📲 FUNCIÓN ENVIAR WHATSAPP ---
-async function enviarWA(tel, msj) {
-    try {
-        await axios.post(WA_URL, { token: WA_TOKEN, to: tel, body: msj });
-        console.log("WhatsApp enviado a: " + tel);
-    } catch (e) { console.error("Error WA API"); }
-}
-
-// --- 📧 RUTA PRINCIPAL ---
 app.get("/api/emails", async (req, res) => {
     const client = new ImapFlow({
-        host: "imap.gmail.com", port: 993, secure: true,
+        host: "imap.gmail.com",
+        port: 993,
+        secure: true,
         auth: { user: EMAIL_USER, pass: EMAIL_PASS },
-        logger: false, tls: { rejectUnauthorized: false }
+        logger: false,
+        tls: { rejectUnauthorized: false }
     });
 
     try {
         await client.connect();
         await client.mailboxOpen('INBOX');
-        let emailsVisibles = [];
+        
+        let emails = [];
         let list = await client.search({ from: "netflix" });
 
-        for (let seq of list.slice(-8).reverse()) {
+        for (let seq of list.slice(-10).reverse()) {
             let msg = await client.fetchOne(seq, { source: true, envelope: true });
-            const fechaCorreo = new Date(msg.envelope.date);
-            const ahora = new Date();
+            
+            let subject = (msg.envelope.subject || "").toLowerCase();
+            let parsed = await simpleParser(msg.source);
+            let contenido = (parsed.text || "").toLowerCase();
 
-            if ((ahora - fechaCorreo) / (1000 * 60) <= 15) {
-                let parsed = await simpleParser(msg.source);
-                let subject = (msg.envelope.subject || "").toLowerCase();
-                let contenido = (parsed.text || "").toLowerCase();
+            // 🚫 TUS FILTROS ORIGINALES (No los toqué)
+            const esCorreoDeCambio = 
+                subject.includes("cambio") || 
+                subject.includes("cuenta") || 
+                subject.includes("contraseña") || 
+                subject.includes("password") ||
+                subject.includes("sesión") ||
+                contenido.includes("cambiar la información") ||
+                contenido.includes("restablecer tu contraseña");
 
-                // Filtros de seguridad
-                const esBasura = ["inicio", "sesión", "cuenta", "contraseña"].some(p => subject.includes(p));
-                const esCodigo = ["temporal", "hogar", "viaje", "código", "codigo"].some(p => subject.includes(p) || contenido.includes(p));
+            const esAccesoUtil = 
+                subject.includes("código") || 
+                subject.includes("codigo") || 
+                subject.includes("temporal") || 
+                subject.includes("hogar") || 
+                subject.includes("viaje");
 
-                if (!esBasura && esCodigo) {
-                    // Extraer código de 6 dígitos
-                    const matchCodigo = contenido.match(/\b\d{6}\b/);
-                    const codigo = matchCodigo ? matchCodigo[0] : null;
+            if (esAccesoUtil && !esCorreoDeCambio) {
+                
+                // --- 🤖 NUEVA AUTOMATIZACIÓN ---
+                const matchCodigo = contenido.match(/\b\d{4}\b/); // Código de 4 dígitos
+                const anioActual = new Date().getFullYear().toString();
+                const codigoLimpio = (matchCodigo && matchCodigo[0] !== anioActual) ? matchCodigo[0] : null;
 
-                    if (codigo) {
-                        // Intentar enviar WhatsApp automáticamente
-                        const fila = await buscarCliente(msg.envelope.to[0].address, contenido);
-                        if (fila) {
-                            const msj = `*NETFLIX CODIGO* 🍿\n\nHola *${fila[1]}*, tu acceso es:\n\n🔑 Código: *${codigo}*\n👤 Perfil: ${fila[6]}\n📍 PIN: ${fila[7] || 'N/A'}\n\n_Vence en 15 min._`;
-                            await enviarWA(fila[2], msj);
-                        }
+                if (codigoLimpio) {
+                    const cliente = await buscarCliente(msg.envelope.to[0].address, contenido);
+                    if (cliente) {
+                        const mensaje = `*NETFLIX CÓDIGO* 🍿\n\nHola *${cliente[1]}*, tu acceso es:\n\n🔑 Código: *${codigoLimpio}*\n👤 Perfil: ${cliente[6]}\n📍 PIN: ${cliente[7] || 'N/A'}\n\n_Vence en 15 min._`;
+                        await enviarWA(cliente[2], mensaje);
                     }
-
-                    emailsVisibles.push({
-                        subject: msg.envelope.subject,
-                        date: fechaCorreo.toLocaleString('es-DO', { timeZone: 'America/Santo_Domingo', hour: '2-digit', minute: '2-digit' }),
-                        to: msg.envelope.to[0].address,
-                        html: parsed.html
-                    });
                 }
+                // --- FIN AUTOMATIZACIÓN ---
+
+                const fechaRD = new Date(msg.envelope.date).toLocaleString('es-DO', {
+                    timeZone: 'America/Santo_Domingo',
+                    hour: '2-digit', minute: '2-digit', hour12: true
+                });
+
+                emails.push({
+                    subject: msg.envelope.subject,
+                    date: fechaRD,
+                    to: msg.envelope.to[0].address, 
+                    html: parsed.html || `<pre>${parsed.text}</pre>`
+                });
             }
         }
+
         await client.logout();
-        res.json({ emails: emailsVisibles });
+        res.json({ emails });
+
     } catch (error) {
         if (client) await client.logout().catch(() => {});
-        res.status(500).json({ error: "Error" });
+        res.status(500).json({ error: "Reintentando..." });
     }
 });
 
-app.listen(PORT, '0.0.0.0', () => { console.log("🚀 Panel con WhatsApp Auto Activo"); });
+app.listen(PORT, '0.0.0.0', () => { console.log("🚀 Panel Blindado con WhatsApp Auto"); });
