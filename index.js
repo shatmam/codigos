@@ -9,51 +9,47 @@ const PORT = process.env.PORT || 3000;
 
 app.use(express.static(path.join(__dirname, "public")));
 
-// --- 🔑 CONFIGURACIONES ---
 const EMAIL_USER = "digitalesservicios311@gmail.com"; 
 const EMAIL_PASS = "rfbmuirunbfwcara"; 
 const SPREADSHEET_ID = '1CtmcSFb2ScYXMAkK0EiKhmLJ1mwZRpGLTXZ8uXY-LRY';
 
-// --- 📲 FUNCIÓN ENVIAR WHATSAPP (Ajustada a tu CURL) ---
+// --- 📲 FUNCIÓN ENVIAR WHATSAPP (Copiada de tu lógica exitosa) ---
 async function enviarWA(tel, msj) {
-    const MI_TOKEN_REAL = "e8054f40611652ca1329c3a19e7250b4798095c7d0b9d2944b9f35a26b5dba78";
-    const URL_API = "https://wasenderapi.com/api/send-message";
+    const URL = 'https://www.wasenderapi.com/api/send-message';
+    const TOKEN = 'e8054f40611652ca1329c3a19e7250b4798095c7d0b9d2944b9f35a26b5dba78';
 
     try {
-        // Formatear teléfono: Asegurar que tenga el "+" al inicio
-        let numeroDestino = tel.trim();
-        if (!numeroDestino.startsWith('+')) {
-            numeroDestino = `+${numeroDestino}`;
-        }
+        // Limpiamos el teléfono igual que en tu script
+        var telefono = tel.toString().replace(/[^0-9]/g, '');
+        
+        // Formato E.164 con + (igual que tu phone_e164)
+        var phone_e164 = '+' + telefono;
 
-        console.log(`🚀 Intentando enviar WhatsApp a ${numeroDestino}...`);
+        console.log('← ENVIANDO a ' + phone_e164);
 
-        const response = await fetch(URL_API, {
+        const response = await fetch(URL, {
             method: 'POST',
-            headers: { 
-                'Authorization': `Bearer ${MI_TOKEN_REAL}`,
-                'Content-Type': 'application/json' 
+            headers: {
+                'Authorization': 'Bearer ' + TOKEN,
+                'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ 
-                "to": numeroDestino, 
-                "text": msj 
+            body: JSON.stringify({
+                'to': phone_e164,
+                'text': msj
             })
         });
 
         const data = await response.json();
-        console.log(`✅ Resultado API WAsender para ${numeroDestino}:`, data);
-    } catch (e) { 
-        console.error("❌ Error fatal en conexión WA:", e.message); 
+        console.log('✅ Respuesta API:', JSON.stringify(data));
+    } catch (e) {
+        console.error('❌ Error enviando WA:', e.message);
     }
 }
 
-// --- 📋 BÚSQUEDA EN SHEETS Y PROCESAMIENTO ---
+// --- 📋 PROCESADOR DE NOTIFICACIONES ---
 async function procesarNotificacionWA(correoNetflix, parsedEmail) {
     try {
-        if (!process.env.GOOGLE_CREDENTIALS) {
-            console.log("❌ Error: Variable GOOGLE_CREDENTIALS no configurada en Railway.");
-            return;
-        }
+        if (!process.env.GOOGLE_CREDENTIALS) return console.log("❌ Falta variable GOOGLE_CREDENTIALS");
 
         const auth = new google.auth.GoogleAuth({
             credentials: JSON.parse(process.env.GOOGLE_CREDENTIALS),
@@ -69,54 +65,59 @@ async function procesarNotificacionWA(correoNetflix, parsedEmail) {
         if (!filas) return;
 
         const cuerpoTexto = (parsedEmail.text || "").toLowerCase();
-        const html = parsedEmail.html || "";
+        const html = (parsedEmail.html || "");
 
-        // Detectar Perfil (Busca el número después de "Hola," o "solicitud de")
-        let perfilDetectado = "";
-        const matchPerfil = cuerpoTexto.match(/hola,?\s*(\d+):/i) || cuerpoTexto.match(/perfil\s*(\d+)/i) || cuerpoTexto.match(/solicitud de\s*(\d+)/i);
-        if (matchPerfil) perfilDetectado = matchPerfil[1];
-        else if (cuerpoTexto.includes("cristal")) perfilDetectado = "cristal";
+        // Detectar perfil (Lógica mejorada)
+        let perfilEmail = "";
+        const match = cuerpoTexto.match(/hola,?\s*(\d+):/i) || cuerpoTexto.match(/perfil\s*(\d+)/i) || cuerpoTexto.match(/solicitud de\s*(\d+)/i);
+        if (match) perfilEmail = match[1].trim();
+        else if (cuerpoTexto.includes("cristal")) perfilEmail = "cristal";
 
-        // Buscar Cliente en el Sheet (Columna E=Correo, G=Perfil)
+        console.log(`🔍 Buscando Match: Correo [${correoNetflix}] | Perfil [${perfilEmail}]`);
+
+        // Buscador de cliente (Fila I=1, J=2... E=4, G=6)
         const cliente = filas.find(f => {
             const correoSheet = (f[4] || "").toLowerCase().trim();
-            const perfilSheet = (f[6] || "").toString().trim();
+            const perfilSheet = (f[6] || "").toString().toLowerCase().trim();
             return correoSheet === correoNetflix.toLowerCase().trim() && 
-                   (perfilSheet === perfilDetectado || perfilSheet.toLowerCase() === "completa");
+                   (perfilSheet === perfilEmail || perfilSheet === "completa");
         });
 
         if (cliente) {
-            let mensajeFinal = "";
-            
-            // Caso Hogar (Enlace)
+            console.log(`✅ Cliente Encontrado: ${cliente[1]}`);
+            const FRASE = '\n\nEste mensaje se envía automáticamente, para más info contacta a tu proveedor.';
+            let mensaje = "";
+
+            // Caso A: Hogar
             if (html.includes("update-home") || html.includes("confirm-account")) {
-                const matchLink = html.match(/href="([^"]*update-home[^"]*)"/) || html.match(/href="([^"]*confirm-account[^"]*)"/);
-                if (matchLink) {
-                    mensajeFinal = `*NETFLIX: ACTUALIZAR HOGAR* 🏠\n\nHola *${cliente[1]}*, activa tu TV aquí:\n\n🔗 ${matchLink[1]}`;
+                const link = html.match(/href="([^"]*update-home[^"]*)"/) || html.match(/href="([^"]*confirm-account[^"]*)"/);
+                if (link) {
+                    mensaje = 'Hola *' + cliente[1] + '*, para activar tu TV de Netflix presiona el siguiente botón:\n\n🔗 ' + link[1] + FRASE;
                 }
             } 
-            // Caso Código (4 dígitos)
+            // Caso B: Código
             else {
-                const matchCodigo = cuerpoTexto.match(/\b\d{4}\b/);
-                const anioActual = new Date().getFullYear().toString();
-                const codigo = (matchCodigo && matchCodigo[0] !== anioActual) ? matchCodigo[0] : null;
-                
-                if (codigo) {
-                    mensajeFinal = `*NETFLIX CÓDIGO* 🍿\n\nHola *${cliente[1]}*, tu código es: *${codigo}*\n👤 Perfil: ${cliente[6]}`;
+                const cod = cuerpoTexto.match(/\b\d{4}\b/);
+                const anio = new Date().getFullYear().toString();
+                const codigoValido = (cod && cod[0] !== anio) ? cod[0] : null;
+                if (codigoValido) {
+                    mensaje = 'Hola *' + cliente[1] + '*, tu código de acceso Netflix es: *' + codigoValido + '*' + FRASE;
                 }
             }
 
-            if (mensajeFinal) {
-                await enviarWA(cliente[2], mensajeFinal);
+            if (mensaje !== "") {
+                await enviarWA(cliente[2], mensaje);
             }
         } else {
-            console.log(`⚠️ Correo de ${correoNetflix} no coincide con ningún cliente activo en el Sheet.`);
+            console.log("⚠️ No se encontró cliente para este correo/perfil.");
         }
-    } catch (e) { console.error("❌ Error en Sheets:", e.message); }
+    } catch (e) {
+        console.error("❌ Error en ProcesarWA:", e.message);
+    }
 }
 
-// --- 📧 RUTA API ---
 app.get("/api/emails", async (req, res) => {
+    console.log("🔔 Petición de códigos recibida...");
     const client = new ImapFlow({
         host: "imap.gmail.com", port: 993, secure: true,
         auth: { user: EMAIL_USER, pass: EMAIL_PASS },
@@ -129,36 +130,29 @@ app.get("/api/emails", async (req, res) => {
         let emails = [];
         let list = await client.search({ from: "netflix" });
 
-        // Analiza los últimos 10 de Netflix (incluyendo los que ya estaban)
         for (let seq of list.slice(-10).reverse()) {
             let msg = await client.fetchOne(seq, { source: true, envelope: true });
             let parsed = await simpleParser(msg.source);
             let subject = (msg.envelope.subject || "").toLowerCase();
 
-            const esUtil = subject.includes("código") || subject.includes("codigo") || subject.includes("temporal") || subject.includes("hogar") || subject.includes("viaje");
-
-            if (esUtil) {
-                // Ejecutamos la automatización
+            if (subject.includes("código") || subject.includes("codigo") || subject.includes("hogar") || subject.includes("temporal")) {
+                // Disparar envío
                 await procesarNotificacionWA(msg.envelope.to[0].address, parsed);
-
-                const fechaRD = new Date(msg.envelope.date).toLocaleString('es-DO', {
-                    timeZone: 'America/Santo_Domingo', hour: '2-digit', minute: '2-digit', hour12: true
-                });
-
+                
                 emails.push({
                     subject: msg.envelope.subject,
-                    date: fechaRD,
-                    to: msg.envelope.to[0].address, 
-                    html: parsed.html || `<pre>${parsed.text}</pre>`
+                    date: new Date(msg.envelope.date).toLocaleString('es-DO'),
+                    to: msg.envelope.to[0].address,
+                    html: parsed.html
                 });
             }
         }
         await client.logout();
         res.json({ emails });
-    } catch (error) {
+    } catch (e) {
         if (client) await client.logout().catch(() => {});
-        res.status(500).json({ error: "Reintentando..." });
+        res.status(500).json({ error: "Error" });
     }
 });
 
-app.listen(PORT, '0.0.0.0', () => { console.log("🚀 Sistema con API WAsender Verificada"); });
+app.listen(PORT, '0.0.0.0', () => { console.log("🚀 Sistema sincronizado con lógica de recordatorios"); });
