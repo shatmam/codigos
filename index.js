@@ -10,46 +10,6 @@ const PORT = process.env.PORT || 3000;
 
 app.use(express.static(path.join(__dirname, "public")));
 
-// ================= CONFIG (TUS DATOS ORIGINALES) =================
-const EMAIL_USER = "digitalesservicios311@gmail.com";
-const EMAIL_PASS = "rfbmuirunbfwcara";
-const SPREADSHEET_ID = "1CtmcSFb2ScYXMAkK0EiKhmLJ1mwZRpGLTXZ8uXY-LRY";
-const WA_TOKEN = "e8054f40611652ca1329c3a19e7250b4798095c7d0b9d2944b9f35a26b5dba78";
-const ADMIN_PHONE = "18494736782";
-
-// ================= FUNCIONES DE APOYO =================
-async function enviarWA(tel, msj) {
-    try {
-        let numero = tel.toString().replace(/[^0-9]/g, "");
-        if (!numero.startsWith("1")) numero = "1" + numero;
-        await fetch("https://www.wasenderapi.com/api/send-message", {
-            method: "POST",
-            headers: { Authorization: `Bearer ${WA_TOKEN}`, "Content-Type": "application/json" },
-            body: JSON.stringify({ to: "+" + numero, text: msj })
-        });
-        console.log("✅ WA Enviado a:", numero);
-    } catch (e) { console.log("❌ Error WA:", e.message); }
-}
-
-function extraerPerfilSolicitante(texto) {
-    const match = texto.match(/(?:solicitud de|perfil|hola,?)\s*([1-5])/i) || texto.match(/\b([1-5])\b/);
-    return match ? match[1] : "";
-}
-
-async function obtenerClientesSheets() {
-    try {
-        const auth = new google.auth.GoogleAuth({
-            credentials: JSON.parse(process.env.GOOGLE_CREDENTIALS),
-            scopes: ["https://www.googleapis.com/auth/spreadsheets.readonly"]
-        });
-        const sheets = google.sheets({ version: "v4", auth });
-        const spreadsheet = await sheets.spreadsheets.values.get({ 
-            spreadsheetId: SPREADSHEET_ID, 
-            range: "Hoja1!A2:K500" 
-        });
-        return spreadsheet.data.values || [];
-    } catch (e) { 
-        console.log("⚠️ Sheets error:", e.message); 
         return [];
     }
 }
