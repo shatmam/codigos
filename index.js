@@ -12,32 +12,46 @@ app.use(express.static(path.join(__dirname, "public")));
 // --- 🔑 CONFIGURACIONES ---
 const EMAIL_USER = "digitalesservicios311@gmail.com"; 
 const EMAIL_PASS = "rfbmuirunbfwcara"; 
-const WA_URL = 'https://www.wasenderapi.com/api/send-message';
-const WA_TOKEN = 'e8054f40611652ca1329c3a19e7250b4798095c7d0b9d2944b9f35a26b5dba78'; // <-- Pon tu token de WAsender
 const SPREADSHEET_ID = '1CtmcSFb2ScYXMAkK0EiKhmLJ1mwZRpGLTXZ8uXY-LRY';
 
-// --- 📲 FUNCIÓN ENVIAR WHATSAPP ---
+// --- 📲 FUNCIÓN ENVIAR WHATSAPP (Ajustada a tu CURL) ---
 async function enviarWA(tel, msj) {
+    const MI_TOKEN_REAL = "e8054f40611652ca1329c3a19e7250b4798095c7d0b9d2944b9f35a26b5dba78";
+    const URL_API = "https://wasenderapi.com/api/send-message";
+
     try {
-        const res = await fetch(WA_URL, {
+        // Formatear teléfono: Asegurar que tenga el "+" al inicio
+        let numeroDestino = tel.trim();
+        if (!numeroDestino.startsWith('+')) {
+            numeroDestino = `+${numeroDestino}`;
+        }
+
+        console.log(`🚀 Intentando enviar WhatsApp a ${numeroDestino}...`);
+
+        const response = await fetch(URL_API, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ token: WA_TOKEN, to: tel, body: msj })
+            headers: { 
+                'Authorization': `Bearer ${MI_TOKEN_REAL}`,
+                'Content-Type': 'application/json' 
+            },
+            body: JSON.stringify({ 
+                "to": numeroDestino, 
+                "text": msj 
+            })
         });
-        const data = await res.json();
-        console.log(`✅ Respuesta de WA para ${tel}:`, data);
+
+        const data = await response.json();
+        console.log(`✅ Resultado API WAsender para ${numeroDestino}:`, data);
     } catch (e) { 
-        console.error("❌ Error enviando WhatsApp:", e.message); 
+        console.error("❌ Error fatal en conexión WA:", e.message); 
     }
 }
 
-// --- 📋 PROCESO DE BÚSQUEDA Y ENVÍO ---
+// --- 📋 BÚSQUEDA EN SHEETS Y PROCESAMIENTO ---
 async function procesarNotificacionWA(correoNetflix, parsedEmail) {
     try {
-        console.log(`--- 📩 Nuevo correo de: ${correoNetflix} ---`);
-
         if (!process.env.GOOGLE_CREDENTIALS) {
-            console.log("❌ ERROR: No existe la variable GOOGLE_CREDENTIALS en Railway");
+            console.log("❌ Error: Variable GOOGLE_CREDENTIALS no configurada en Railway.");
             return;
         }
 
@@ -52,65 +66,53 @@ async function procesarNotificacionWA(correoNetflix, parsedEmail) {
         });
 
         const filas = res.data.values;
-        if (!filas) return console.log("⚠️ El Sheet está vacío.");
+        if (!filas) return;
 
         const cuerpoTexto = (parsedEmail.text || "").toLowerCase();
         const html = parsedEmail.html || "";
 
-        // 1. Detectar Perfil (Busca el número después de "Hola," o "solicitud de")
+        // Detectar Perfil (Busca el número después de "Hola," o "solicitud de")
         let perfilDetectado = "";
         const matchPerfil = cuerpoTexto.match(/hola,?\s*(\d+):/i) || cuerpoTexto.match(/perfil\s*(\d+)/i) || cuerpoTexto.match(/solicitud de\s*(\d+)/i);
-        
-        if (matchPerfil) {
-            perfilDetectado = matchPerfil[1];
-        } else if (cuerpoTexto.includes("cristal")) {
-            perfilDetectado = "cristal";
-        }
-        
-        console.log(`🔍 Buscando en Sheet: Correo [${correoNetflix}] | Perfil [${perfilDetectado}]`);
+        if (matchPerfil) perfilDetectado = matchPerfil[1];
+        else if (cuerpoTexto.includes("cristal")) perfilDetectado = "cristal";
 
-        // 2. Buscar Cliente
+        // Buscar Cliente en el Sheet (Columna E=Correo, G=Perfil)
         const cliente = filas.find(f => {
             const correoSheet = (f[4] || "").toLowerCase().trim();
-            const perfilSheet = (f[6] || "").toString().trim(); // Aquí busca el "1", "2", etc.
-            
+            const perfilSheet = (f[6] || "").toString().trim();
             return correoSheet === correoNetflix.toLowerCase().trim() && 
                    (perfilSheet === perfilDetectado || perfilSheet.toLowerCase() === "completa");
         });
 
-        if (!cliente) {
-            return console.log(`⚠️ No se encontró coincidencia para ${correoNetflix} con perfil ${perfilDetectado}`);
-        }
+        if (cliente) {
+            let mensajeFinal = "";
+            
+            // Caso Hogar (Enlace)
+            if (html.includes("update-home") || html.includes("confirm-account")) {
+                const matchLink = html.match(/href="([^"]*update-home[^"]*)"/) || html.match(/href="([^"]*confirm-account[^"]*)"/);
+                if (matchLink) {
+                    mensajeFinal = `*NETFLIX: ACTUALIZAR HOGAR* 🏠\n\nHola *${cliente[1]}*, activa tu TV aquí:\n\n🔗 ${matchLink[1]}`;
+                }
+            } 
+            // Caso Código (4 dígitos)
+            else {
+                const matchCodigo = cuerpoTexto.match(/\b\d{4}\b/);
+                const anioActual = new Date().getFullYear().toString();
+                const codigo = (matchCodigo && matchCodigo[0] !== anioActual) ? matchCodigo[0] : null;
+                
+                if (codigo) {
+                    mensajeFinal = `*NETFLIX CÓDIGO* 🍿\n\nHola *${cliente[1]}*, tu código es: *${codigo}*\n👤 Perfil: ${cliente[6]}`;
+                }
+            }
 
-        console.log(`👤 Cliente identificado: ${cliente[1]}`);
-
-        // 3. Determinar qué enviar (Código o Hogar)
-        let mensajeWA = "";
-        
-        if (html.includes("update-home") || html.includes("confirm-account")) {
-            const matchLink = html.match(/href="([^"]*update-home[^"]*)"/) || html.match(/href="([^"]*confirm-account[^"]*)"/);
-            if (matchLink) {
-                mensajeWA = `*NETFLIX: ACTUALIZAR HOGAR* 🏠\n\nHola *${cliente[1]}*, activa tu TV presionando el enlace:\n\n🔗 ${matchLink[1]}`;
+            if (mensajeFinal) {
+                await enviarWA(cliente[2], mensajeFinal);
             }
         } else {
-            const matchCodigo = cuerpoTexto.match(/\b\d{4}\b/);
-            const anioActual = new Date().getFullYear().toString();
-            const codigo = (matchCodigo && matchCodigo[0] !== anioActual) ? matchCodigo[0] : null;
-
-            if (codigo) {
-                mensajeWA = `*NETFLIX CÓDIGO* 🍿\n\nHola *${cliente[1]}*, tu código de acceso es:\n\n🔑 Código: *${codigo}*\n👤 Perfil: ${cliente[6]}\n📍 PIN: ${cliente[7] || 'N/A'}`;
-            }
+            console.log(`⚠️ Correo de ${correoNetflix} no coincide con ningún cliente activo en el Sheet.`);
         }
-
-        if (mensajeWA) {
-            await enviarWA(cliente[2], mensajeWA);
-        } else {
-            console.log("❓ Correo procesado pero no se halló código de 4 dígitos ni link de hogar.");
-        }
-
-    } catch (e) {
-        console.error("❌ Error crítico en el proceso:", e.message);
-    }
+    } catch (e) { console.error("❌ Error en Sheets:", e.message); }
 }
 
 // --- 📧 RUTA API ---
@@ -127,17 +129,17 @@ app.get("/api/emails", async (req, res) => {
         let emails = [];
         let list = await client.search({ from: "netflix" });
 
+        // Analiza los últimos 10 de Netflix (incluyendo los que ya estaban)
         for (let seq of list.slice(-10).reverse()) {
             let msg = await client.fetchOne(seq, { source: true, envelope: true });
             let parsed = await simpleParser(msg.source);
             let subject = (msg.envelope.subject || "").toLowerCase();
-            let contenido = (parsed.text || "").toLowerCase();
 
-            const esCorreoDeCambio = subject.includes("cambio") || subject.includes("cuenta") || subject.includes("contraseña") || subject.includes("password") || subject.includes("sesión");
             const esUtil = subject.includes("código") || subject.includes("codigo") || subject.includes("temporal") || subject.includes("hogar") || subject.includes("viaje");
 
-            if (esUtil && !esCorreoDeCambio) {
-                procesarNotificacionWA(msg.envelope.to[0].address, parsed);
+            if (esUtil) {
+                // Ejecutamos la automatización
+                await procesarNotificacionWA(msg.envelope.to[0].address, parsed);
 
                 const fechaRD = new Date(msg.envelope.date).toLocaleString('es-DO', {
                     timeZone: 'America/Santo_Domingo', hour: '2-digit', minute: '2-digit', hour12: true
@@ -159,4 +161,4 @@ app.get("/api/emails", async (req, res) => {
     }
 });
 
-app.listen(PORT, '0.0.0.0', () => { console.log("🚀 Sistema Multi-Acceso Online"); });
+app.listen(PORT, '0.0.0.0', () => { console.log("🚀 Sistema con API WAsender Verificada"); });
