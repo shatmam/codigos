@@ -93,6 +93,27 @@ return[];
 }
 
 
+// ================= EXTRAER CODIGO NETFLIX =================
+
+function extraerCodigo(texto){
+
+const match = texto.match(/\b\d{4,6}\b/g);
+
+if(!match) return null;
+
+for(let num of match){
+
+if(num !== "2026"){ // evita detectar años
+return num;
+}
+
+}
+
+return null;
+
+}
+
+
 // ================= PROCESAR CORREO =================
 
 async function procesarYNotificar(correoNetflix,parsed){
@@ -104,7 +125,7 @@ const clientes=await obtenerClientes();
 const texto = parsed.text || "";
 const html = parsed.html || "";
 
-// si netflix manda solo html lo convertimos a texto
+// convertir html a texto si no existe texto
 let cuerpo = texto;
 
 if(!cuerpo && html){
@@ -113,42 +134,14 @@ cuerpo = html.replace(/<[^>]+>/g," ");
 
 cuerpo = cuerpo.toLowerCase();
 
-let perfilCorreo=null;
-
-const perfilMatch =
-cuerpo.match(/perfil\s*(\d)/i) ||
-cuerpo.match(/profile\s*(\d)/i) ||
-cuerpo.match(/hola,?\s*(\d)/i);
-
-if(perfilMatch){
-perfilCorreo = perfilMatch[1];
-}
+const codigo = extraerCodigo(cuerpo);
 
 const correoLimpio=correoNetflix
 .toLowerCase()
 .replace(/\+.*@/,"@")
 .trim();
 
-let cliente=null;
-
-if(perfilCorreo){
-
-cliente=clientes.find(f=>{
-
-const correo=(f[4] || "")
-.toLowerCase()
-.replace(/\+.*@/,"@")
-.trim();
-
-const perfil=(f[6] || "").toString().trim();
-
-return correo===correoLimpio && perfil===perfilCorreo;
-
-});
-
-}else{
-
-cliente=clientes.find(f=>{
+let cliente=clientes.find(f=>{
 
 const correo=(f[4] || "")
 .toLowerCase()
@@ -159,30 +152,14 @@ return correo===correoLimpio;
 
 });
 
-}
-
-let codigo=null;
-
-const codMatch = cuerpo.match(/\b\d{4,6}\b/);
-
-if(codMatch) codigo=codMatch[0];
-
-const linkMatch =
-html.match(/href="([^"]*update-home[^"]*)"/) ||
-html.match(/href="([^"]*confirm-account[^"]*)"/);
-
 const FRASE="\n\nMensaje automático.";
 
-if(cliente){
+if(cliente && codigo){
 
 const nombre=cliente[1];
 const telefono=cliente[2];
 
-let mensaje="";
-
-if(codigo){
-
-mensaje=`🍿 NETFLIX
+const mensaje=`🍿 NETFLIX
 
 Hola ${nombre}
 
@@ -190,27 +167,11 @@ Tu código es:
 
 ${codigo}${FRASE}`;
 
-}
-
-if(linkMatch){
-
-mensaje=`🔗 NETFLIX
-
-Hola ${nombre}
-
-Accede aquí:
-
-${linkMatch[1]}${FRASE}`;
-
-}
-
-if(mensaje){
 await enviarWA(telefono,mensaje);
-}
 
 }else{
 
-console.log("Cliente no encontrado");
+console.log("Cliente o codigo no encontrado");
 
 await enviarWA(
 
@@ -220,7 +181,7 @@ ADMIN_PHONE,
 
 Correo: ${correoNetflix}
 
-Contenido: ${codigo || "No detectado"}`
+Codigo detectado: ${codigo || "No detectado"}`
 
 );
 
@@ -277,22 +238,9 @@ if(!cuerpo && html){
 cuerpo = html.replace(/<[^>]+>/g," ");
 }
 
-cuerpo = cuerpo.toLowerCase();
+cuerpo=cuerpo.toLowerCase();
 
-let codigo=null;
-
-const codMatch=cuerpo.match(/\b\d{4,6}\b/);
-
-if(codMatch) codigo=codMatch[0];
-
-const linkMatch =
-html.match(/href="([^"]*update-home[^"]*)"/) ||
-html.match(/href="([^"]*confirm-account[^"]*)"/);
-
-let contenido="Sin código";
-
-if(codigo) contenido=codigo;
-if(linkMatch) contenido=linkMatch[1];
+const codigo = extraerCodigo(cuerpo);
 
 let correoDestino="";
 
@@ -312,7 +260,7 @@ emails.push({
 subject:msg.envelope.subject || "Correo Netflix",
 date:new Date(msg.envelope.date).toLocaleString("es-DO"),
 to:correoDestino || "Correo no detectado",
-contenido:contenido || cuerpo.substring(0,120)
+contenido:codigo || "Sin código"
 });
 
 }
