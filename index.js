@@ -32,32 +32,18 @@ async function enviarWA(tel, msj) {
       },
       body: JSON.stringify({ to: "+" + numero, text: msj })
     });
-    console.log(`📲 Enviado a ${numero}. Respuesta API: ${await response.text()}`);
+    const resText = await response.text();
+    console.log(`📲 Enviado a ${numero}. Respuesta: ${resText}`);
   } catch (error) { console.log("❌ Error WA:", error.message); }
 }
 
 // ================= PROCESAR =================
 async function procesarYNotificar(correoNetflix, parsedEmail) {
   try {
-    const auth = new google.auth.GoogleAuth({
-      credentials: JSON.parse(process.env.GOOGLE_CREDENTIALS),
-      scopes: ["https://www.googleapis.com/auth/spreadsheets.readonly"]
-    });
-    const sheets = google.sheets({ version: "v4", auth });
-    const res = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: "Hoja1!A2:K500" });
-    const clientes = res.data.values || [];
-
-    // Limpieza de texto para evitar el "undefined"
+    // 1. Extraer Contenido Primero (Para que no salga undefined en el panel)
     const texto = (parsedEmail.text || "").toLowerCase();
     const html = parsedEmail.html || "";
-
-    // 1. Detección de Perfil (Búsqueda más profunda)
-    let perfilCorreo = "";
-    const matchPerfil = texto.match(/hola,?\s*(\d+):/i) || texto.match(/perfil\s*(\d+)/i) || html.match(/>Perfil\s*(\d+)</i);
-    if (matchPerfil) perfilCorreo = matchPerfil[1].trim();
-    else if (texto.includes("cristal")) perfilCorreo = "cristal";
-
-    // 2. Detección de Contenido (Código o Link)
+    
     const codMatch = texto.match(/\b\d{4}\b/);
     let codigo = (codMatch && codMatch[0] !== "2026") ? codMatch[0] : null;
 
@@ -66,8 +52,26 @@ async function procesarYNotificar(correoNetflix, parsedEmail) {
                       html.match(/href="([^"]*netflix.com\/browse[^"]*)"/);
 
     const infoUtil = codigo || (linkMatch ? linkMatch[1] : null);
+    
+    // Si no hay código ni link, no seguimos
+    if (!infoUtil) return "No se detectó código o link";
 
-    // 3. Buscar en Excel
+    // 2. Obtener Clientes de Google Sheets
+    const auth = new google.auth.GoogleAuth({
+      credentials: JSON.parse(process.env.GOOGLE_CREDENTIALS),
+      scopes: ["https://www.googleapis.com/auth/spreadsheets.readonly"]
+    });
+    const sheets = google.sheets({ version: "v4", auth });
+    const res = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: "Hoja1!A2:K500" });
+    const clientes = res.data.values || [];
+
+    // 3. Detectar Perfil (Búsqueda más flexible)
+    let perfilCorreo = "";
+    const matchPerfil = texto.match(/hola,?\s*(\d+):/i) || texto.match(/perfil\s*(\d+)/i);
+    if (matchPerfil) perfilCorreo = matchPerfil[1].trim();
+    else if (texto.includes("cristal")) perfilCorreo = "cristal";
+
+    // 4. Buscar Match en Excel
     const cliente = clientes.find(f => {
       const correoExcel = (f[4] || "").toLowerCase().trim();
       const perfilExcel = (f[6] || "").toString().toLowerCase().trim();
@@ -76,19 +80,22 @@ async function procesarYNotificar(correoNetflix, parsedEmail) {
 
     const FRASE = "\n\nEste mensaje es automático. Contacta tu proveedor.";
 
-    if (cliente && infoUtil) {
+    if (cliente) {
       let mensaje = codigo ? 
         `🍿 *NETFLIX CÓDIGO*\n\nHola *${cliente[1]}*, tu código es: *${codigo}*${FRASE}` :
         `🔗 *NETFLIX ACCESO*\n\nHola *${cliente[1]}*, accede aquí:\n${linkMatch[1]}${FRASE}`;
       
       await enviarWA(cliente[2], mensaje);
-    } else if (infoUtil) {
-      // Si hay código pero no sabemos de quién es, va al Admin
-      await enviarWA(ADMIN_PHONE, `⚠️ *AVISO ADMIN*\n\nCuenta: ${correoNetflix}\nPerfil Detectado: ${perfilCorreo || "Desconocido"}\nContenido: ${infoUtil}`);
+    } else {
+      // Si no hay match, enviar al ADMIN
+      await enviarWA(ADMIN_PHONE, `⚠️ *AVISO ADMIN*\n\nCuenta: ${correoNetflix}\nPerfil Detectado: ${perfilCorreo || "No identificado"}\nContenido: ${infoUtil}`);
     }
     
-    return infoUtil; // Devolvemos el contenido para el panel
-  } catch (error) { console.log("❌ Error:", error.message); return "Error extrayendo datos"; }
+    return infoUtil; 
+  } catch (error) { 
+    console.log("❌ Error:", error.message); 
+    return "Error procesando datos"; 
+  }
 }
 
 app.get("/api/emails", async (req, res) => {
@@ -99,23 +106,29 @@ app.get("/api/emails", async (req, res) => {
     const list = await client.search({ from: "netflix" });
     let emails = [];
 
-    for (let seq of list.slice(-5).reverse()) {
+    // Invertir y limitar para ver los más nuevos primero
+    const seleccionados = list.slice(-5).reverse();
+
+    for (let seq of seleccionados) {
       const msg = await client.fetchOne(seq, { source: true, envelope: true });
       const parsed = await simpleParser(msg.source);
       
-      // Procesamos y obtenemos lo que antes salía como "undefined"
+      // ESPERAR a que termine el procesamiento antes de seguir
       const contenidoExtraido = await procesarYNotificar(msg.envelope.to[0].address, parsed);
 
       emails.push({
         subject: msg.envelope.subject,
         date: new Date(msg.envelope.date).toLocaleString("es-DO"),
         to: msg.envelope.to[0].address,
-        html: contenidoExtraido || "No se detectó código/link" 
+        html: contenidoExtraido 
       });
     }
     await client.logout();
     res.json({ emails });
-  } catch (error) { res.status(500).json({ error: error.message }); }
+  } catch (error) { 
+    console.error("IMAP Error:", error);
+    res.status(500).json({ error: error.message }); 
+  }
 });
 
-app.listen(PORT, "0.0.0.0", () => { console.log("🚀 Servidor corregido"); });
+app.listen(PORT, "0.0.0.0", () => { console.log("🚀 Servidor Reparado en puerto", PORT); });
