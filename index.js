@@ -9,28 +9,25 @@ const PORT = process.env.PORT || 3000;
 
 app.use(express.static(path.join(__dirname, "public")));
 
+// --- CONFIGURACIÓN ---
 const EMAIL_USER = "digitalesservicios311@gmail.com"; 
 const EMAIL_PASS = "rfbmuirunbfwcara"; 
 const SPREADSHEET_ID = '1CtmcSFb2ScYXMAkK0EiKhmLJ1mwZRpGLTXZ8uXY-LRY';
+const WA_TOKEN = 'e8054f40611652ca1329c3a19e7250b4798095c7d0b9d2944b9f35a26b5dba78';
 
-// --- 📲 FUNCIÓN ENVIAR WHATSAPP (Copiada de tu lógica exitosa) ---
+// --- 📲 FUNCIÓN ENVIAR WHATSAPP (Sincronizada con tu lógica funcional) ---
 async function enviarWA(tel, msj) {
-    const URL = 'https://www.wasenderapi.com/api/send-message';
-    const TOKEN = 'e8054f40611652ca1329c3a19e7250b4798095c7d0b9d2944b9f35a26b5dba78';
-
+    const url = 'https://www.wasenderapi.com/api/send-message';
     try {
-        // Limpiamos el teléfono igual que en tu script
         var telefono = tel.toString().replace(/[^0-9]/g, '');
-        
-        // Formato E.164 con + (igual que tu phone_e164)
         var phone_e164 = '+' + telefono;
 
         console.log('← ENVIANDO a ' + phone_e164);
 
-        const response = await fetch(URL, {
+        const response = await fetch(url, {
             method: 'POST',
             headers: {
-                'Authorization': 'Bearer ' + TOKEN,
+                'Authorization': 'Bearer ' + WA_TOKEN,
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
@@ -38,18 +35,15 @@ async function enviarWA(tel, msj) {
                 'text': msj
             })
         });
-
-        const data = await response.json();
-        console.log('✅ Respuesta API:', JSON.stringify(data));
-    } catch (e) {
-        console.error('❌ Error enviando WA:', e.message);
-    }
+        const resData = await response.json();
+        console.log('✅ Respuesta API:', resData);
+    } catch (e) { console.error('❌ Error API:', e.message); }
 }
 
-// --- 📋 PROCESADOR DE NOTIFICACIONES ---
-async function procesarNotificacionWA(correoNetflix, parsedEmail) {
+// --- 📋 PROCESADOR CON TUS FILTROS ORIGINALES ---
+async function buscarYEnviarWA(correoNetflix, cuerpoParsed) {
     try {
-        if (!process.env.GOOGLE_CREDENTIALS) return console.log("❌ Falta variable GOOGLE_CREDENTIALS");
+        if (!process.env.GOOGLE_CREDENTIALS) return;
 
         const auth = new google.auth.GoogleAuth({
             credentials: JSON.parse(process.env.GOOGLE_CREDENTIALS),
@@ -64,60 +58,54 @@ async function procesarNotificacionWA(correoNetflix, parsedEmail) {
         const filas = res.data.values;
         if (!filas) return;
 
-        const cuerpoTexto = (parsedEmail.text || "").toLowerCase();
-        const html = (parsedEmail.html || "");
+        const cuerpoTexto = (cuerpoParsed.text || "").toLowerCase();
+        const html = (cuerpoParsed.html || "");
 
-        // Detectar perfil (Lógica mejorada)
-        let perfilEmail = "";
-        const match = cuerpoTexto.match(/hola,?\s*(\d+):/i) || cuerpoTexto.match(/perfil\s*(\d+)/i) || cuerpoTexto.match(/solicitud de\s*(\d+)/i);
-        if (match) perfilEmail = match[1].trim();
-        else if (cuerpoTexto.includes("cristal")) perfilEmail = "cristal";
+        // 1. Detectar Perfil (Tu lógica original de perfiles 1-5)
+        let perfilEnCorreo = "";
+        if (cuerpoTexto.includes("perfil 1") || cuerpoTexto.includes(">1<")) perfilEnCorreo = "1";
+        else if (cuerpoTexto.includes("perfil 2") || cuerpoTexto.includes(">2<")) perfilEnCorreo = "2";
+        else if (cuerpoTexto.includes("perfil 3") || cuerpoTexto.includes(">3<")) perfilEnCorreo = "3";
+        else if (cuerpoTexto.includes("perfil 4") || cuerpoTexto.includes(">4<")) perfilEnCorreo = "4";
+        else if (cuerpoTexto.includes("perfil 5") || cuerpoTexto.includes(">5<")) perfilEnCorreo = "5";
+        else if (cuerpoTexto.includes("cristal")) perfilEnCorreo = "cristal";
 
-        console.log(`🔍 Buscando Match: Correo [${correoNetflix}] | Perfil [${perfilEmail}]`);
-
-        // Buscador de cliente (Fila I=1, J=2... E=4, G=6)
+        // 2. Buscar Cliente
         const cliente = filas.find(f => {
-            const correoSheet = (f[4] || "").toLowerCase().trim();
-            const perfilSheet = (f[6] || "").toString().toLowerCase().trim();
-            return correoSheet === correoNetflix.toLowerCase().trim() && 
-                   (perfilSheet === perfilEmail || perfilSheet === "completa");
+            const correoMatch = f[4]?.toLowerCase().trim() === correoNetflix.toLowerCase().trim();
+            const perfilMatch = f[6]?.toString().trim() === perfilEnCorreo;
+            const esCompleta = f[6]?.toLowerCase().trim() === "completa";
+            return correoMatch && (perfilMatch || esCompleta);
         });
 
         if (cliente) {
-            console.log(`✅ Cliente Encontrado: ${cliente[1]}`);
-            const FRASE = '\n\nEste mensaje se envía automáticamente, para más info contacta a tu proveedor.';
             let mensaje = "";
+            const FRASE = '\n\nEste mensaje se envía automáticamente, para más info contacta a tu proveedor.';
 
-            // Caso A: Hogar
+            // CASO HOGAR (Basado en tu imagen)
             if (html.includes("update-home") || html.includes("confirm-account")) {
                 const link = html.match(/href="([^"]*update-home[^"]*)"/) || html.match(/href="([^"]*confirm-account[^"]*)"/);
                 if (link) {
-                    mensaje = 'Hola *' + cliente[1] + '*, para activar tu TV de Netflix presiona el siguiente botón:\n\n🔗 ' + link[1] + FRASE;
+                    mensaje = 'Hola *' + cliente[1] + '*, para confirmar tu hogar en Netflix presiona aquí:\n\n🔗 ' + link[1] + FRASE;
                 }
             } 
-            // Caso B: Código
+            // CASO CÓDIGO
             else {
-                const cod = cuerpoTexto.match(/\b\d{4}\b/);
-                const anio = new Date().getFullYear().toString();
-                const codigoValido = (cod && cod[0] !== anio) ? cod[0] : null;
-                if (codigoValido) {
-                    mensaje = 'Hola *' + cliente[1] + '*, tu código de acceso Netflix es: *' + codigoValido + '*' + FRASE;
+                const matchCodigo = cuerpoTexto.match(/\b\d{4}\b/);
+                const anioActual = new Date().getFullYear().toString();
+                const codigo = (matchCodigo && matchCodigo[0] !== anioActual) ? matchCodigo[0] : null;
+
+                if (codigo) {
+                    mensaje = 'Hola *' + cliente[1] + '*, tu código Netflix es: *' + codigo + '*' + FRASE;
                 }
             }
 
-            if (mensaje !== "") {
-                await enviarWA(cliente[2], mensaje);
-            }
-        } else {
-            console.log("⚠️ No se encontró cliente para este correo/perfil.");
+            if (mensaje) await enviarWA(cliente[2], mensaje);
         }
-    } catch (e) {
-        console.error("❌ Error en ProcesarWA:", e.message);
-    }
+    } catch (e) { console.error("❌ Error Sheets:", e.message); }
 }
 
 app.get("/api/emails", async (req, res) => {
-    console.log("🔔 Petición de códigos recibida...");
     const client = new ImapFlow({
         host: "imap.gmail.com", port: 993, secure: true,
         auth: { user: EMAIL_USER, pass: EMAIL_PASS },
@@ -134,25 +122,42 @@ app.get("/api/emails", async (req, res) => {
             let msg = await client.fetchOne(seq, { source: true, envelope: true });
             let parsed = await simpleParser(msg.source);
             let subject = (msg.envelope.subject || "").toLowerCase();
+            let contenido = (parsed.text || "").toLowerCase();
 
-            if (subject.includes("código") || subject.includes("codigo") || subject.includes("hogar") || subject.includes("temporal")) {
-                // Disparar envío
-                await procesarNotificacionWA(msg.envelope.to[0].address, parsed);
-                
+            // --- TUS FILTROS ORIGINALES (NO TOCAR) ---
+            const esCorreoDeCambio = 
+                subject.includes("cambio") || subject.includes("cuenta") || 
+                subject.includes("contraseña") || subject.includes("password") ||
+                subject.includes("sesión") || contenido.includes("cambiar la información") ||
+                contenido.includes("restablecer tu contraseña");
+
+            const esAccesoUtil = 
+                subject.includes("código") || subject.includes("codigo") || 
+                subject.includes("temporal") || subject.includes("hogar") || 
+                subject.includes("viaje");
+
+            if (esAccesoUtil && !esCorreoDeCambio) {
+                // Ejecutamos la búsqueda y envío
+                await buscarYEnviarWA(msg.envelope.to[0].address, parsed);
+
+                const fechaRD = new Date(msg.envelope.date).toLocaleString('es-DO', {
+                    timeZone: 'America/Santo_Domingo', hour: '2-digit', minute: '2-digit', hour12: true
+                });
+
                 emails.push({
                     subject: msg.envelope.subject,
-                    date: new Date(msg.envelope.date).toLocaleString('es-DO'),
-                    to: msg.envelope.to[0].address,
-                    html: parsed.html
+                    date: fechaRD,
+                    to: msg.envelope.to[0].address, 
+                    html: parsed.html || `<pre>${parsed.text}</pre>`
                 });
             }
         }
         await client.logout();
         res.json({ emails });
-    } catch (e) {
+    } catch (error) {
         if (client) await client.logout().catch(() => {});
         res.status(500).json({ error: "Error" });
     }
 });
 
-app.listen(PORT, '0.0.0.0', () => { console.log("🚀 Sistema sincronizado con lógica de recordatorios"); });
+app.listen(PORT, '0.0.0.0', () => { console.log("🚀 Sistema restablecido con filtros originales"); });
