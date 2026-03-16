@@ -4,7 +4,6 @@ const { ImapFlow } = require("imapflow");
 const { simpleParser } = require("mailparser");
 const { google } = require("googleapis");
 const fetch = require("node-fetch");
-const fs = require("fs");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -12,58 +11,22 @@ const PORT = process.env.PORT || 3000;
 app.use(express.static(path.join(__dirname, "public")));
 
 
-// CONFIG
+// ================= CONFIG =================
+
 const EMAIL_USER = "digitalesservicios311@gmail.com";
 const EMAIL_PASS = "rfbmuirunbfwcara";
 
 const SPREADSHEET_ID = "1CtmcSFb2ScYXMAkK0EiKhmLJ1mwZRpGLTXZ8uXY-LRY";
 
 const WA_TOKEN = "e8054f40611652ca1329c3a19e7250b4798095c7d0b9d2944b9f35a26b5dba78";
+
 const ADMIN_PHONE = "18494736782";
 
 
-// ================= HISTORIAL =================
+// ================= MEMORIA =================
 
-let historialCodigos = [];
-let historialCorreos = [];
-
-try {
-historialCodigos = JSON.parse(fs.readFileSync("codigos.json"));
-} catch { historialCodigos = []; }
-
-try {
-historialCorreos = JSON.parse(fs.readFileSync("correos.json"));
-} catch { historialCorreos = []; }
-
-
-// ================= GUARDAR HISTORIAL =================
-
-function guardarCodigo(codigo){
-
-historialCodigos.push(codigo);
-
-fs.writeFileSync("codigos.json",JSON.stringify(historialCodigos));
-
-}
-
-function codigoExiste(codigo){
-
-return historialCodigos.includes(codigo);
-
-}
-
-
-function correoProcesado(id){
-
-if(historialCorreos.includes(id)) return true;
-
-historialCorreos.push(id);
-
-fs.writeFileSync("correos.json",JSON.stringify(historialCorreos));
-
-return false;
-
-}
+let codigosUsados = new Set();
+let correosProcesados = new Set();
 
 
 // ================= CACHE CLIENTES =================
@@ -73,11 +36,11 @@ let ultimaCarga = 0;
 
 async function obtenerClientes(){
 
-if(Date.now()-ultimaCarga < 600000){
+if(Date.now() - ultimaCarga < 600000){
 return clientesCache;
 }
 
-console.log("📊 Cargando clientes desde Google Sheets...");
+console.log("📊 Cargando clientes desde Sheets");
 
 const auth = new google.auth.GoogleAuth({
 credentials: JSON.parse(process.env.GOOGLE_CREDENTIALS),
@@ -106,7 +69,7 @@ return clientesCache;
 
 async function enviarWA(tel,msg){
 
-const url="https://www.wasenderapi.com/api/send-message";
+const url = "https://www.wasenderapi.com/api/send-message";
 
 try{
 
@@ -147,30 +110,29 @@ console.log("❌ Error WhatsApp:",e.message);
 
 async function procesarCorreo(correoNetflix,parsed,idCorreo){
 
-if(correoProcesado(idCorreo)){
-
+if(correosProcesados.has(idCorreo)){
 console.log("⚠️ correo ya procesado");
-
 return;
-
 }
+
+correosProcesados.add(idCorreo);
 
 const clientes = await obtenerClientes();
 
 const texto = (parsed.text||"").toLowerCase();
 const html = parsed.html || "";
 
-let codigo=null;
-
 const codMatch = texto.match(/\b\d{4}\b/);
+
+let codigo=null;
 
 if(codMatch){
 
-if(!codigoExiste(codMatch[0])){
+if(!codigosUsados.has(codMatch[0])){
 
-codigo=codMatch[0];
+codigo = codMatch[0];
 
-guardarCodigo(codigo);
+codigosUsados.add(codigo);
 
 }else{
 
@@ -181,7 +143,6 @@ return;
 }
 
 }
-
 
 const linkMatch =
 html.match(/href="([^"]*update-home[^"]*)"/) ||
@@ -204,7 +165,6 @@ const telefono = cliente[2];
 
 let mensaje="";
 
-
 if(codigo){
 
 mensaje=
@@ -221,7 +181,6 @@ Escríbelo en la pantalla donde estás iniciando sesión.
 
 }
 
-
 if(linkMatch){
 
 mensaje=
@@ -229,7 +188,7 @@ mensaje=
 
 Hola *${nombre}*
 
-Netflix solicitó actualizar el hogar.
+Netflix solicita actualizar el hogar.
 
 Abre este enlace:
 
@@ -239,7 +198,6 @@ Después podrás seguir usando Netflix normalmente.
 `;
 
 }
-
 
 if(mensaje){
 
@@ -311,13 +269,10 @@ await procesarCorreo(correoDestino,parsed,msg.uid);
 
 emails.push({
 
-subject: msg.envelope.subject,
-
-date: new Date(msg.envelope.date).toLocaleString("es-DO"),
-
-to: correoDestino,
-
-html: parsed.html
+subject:msg.envelope.subject,
+date:new Date(msg.envelope.date).toLocaleString("es-DO"),
+to:correoDestino,
+html:parsed.html
 
 });
 
@@ -349,7 +304,7 @@ res.json({emails});
 });
 
 
-// ================= MONITOR AUTOMATICO =================
+// ================= MONITOR =================
 
 setInterval(revisarCorreos,20000);
 
@@ -358,6 +313,6 @@ setInterval(revisarCorreos,20000);
 
 app.listen(PORT,"0.0.0.0",()=>{
 
-console.log("🚀 SISTEMA NETFLIX PRO ACTIVO");
+console.log("🚀 Sistema Netflix PRO activo");
 
 });
