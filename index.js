@@ -27,288 +27,304 @@ const ADMIN_PHONE = "18494736782";
 
 async function enviarWA(tel, msj) {
 
-  const url = "https://www.wasenderapi.com/api/send-message";
+try {
 
-  try {
+let numero = tel.toString().replace(/[^0-9]/g,"");
 
-    let numero = tel.toString().replace(/[^0-9]/g, "");
+if(!numero.startsWith("1")){
+numero="1"+numero;
+}
 
-    if (!numero.startsWith("1")) {
-      numero = "1" + numero;
-    }
+const phone="+"+numero;
 
-    let phone = "+" + numero;
+await fetch("https://www.wasenderapi.com/api/send-message",{
+method:"POST",
+headers:{
+Authorization:`Bearer ${WA_TOKEN}`,
+"Content-Type":"application/json"
+},
+body:JSON.stringify({
+to:phone,
+text:msj
+})
+});
 
-    console.log("📲 Enviando WA:", phone);
+console.log("WA enviado:",phone);
 
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${WA_TOKEN}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        to: phone,
-        text: msj
-      })
-    });
+}catch(e){
 
-    const data = await response.text();
+console.log("Error WA:",e.message);
 
-    console.log("📩 Respuesta WA:", data);
-
-  } catch (error) {
-
-    console.log("❌ Error WhatsApp:", error.message);
-
-  }
+}
 
 }
 
 
 // ================= GOOGLE SHEETS =================
 
-async function obtenerClientes() {
+async function obtenerClientes(){
 
-  try {
+try{
 
-    const auth = new google.auth.GoogleAuth({
-      credentials: JSON.parse(process.env.GOOGLE_CREDENTIALS),
-      scopes: ["https://www.googleapis.com/auth/spreadsheets.readonly"]
-    });
+const auth=new google.auth.GoogleAuth({
+credentials:JSON.parse(process.env.GOOGLE_CREDENTIALS),
+scopes:["https://www.googleapis.com/auth/spreadsheets.readonly"]
+});
 
-    const sheets = google.sheets({
-      version: "v4",
-      auth
-    });
+const sheets=google.sheets({
+version:"v4",
+auth
+});
 
-    const res = await sheets.spreadsheets.values.get({
-      spreadsheetId: SPREADSHEET_ID,
-      range: "Hoja1!A2:K500"
-    });
+const res=await sheets.spreadsheets.values.get({
+spreadsheetId:SPREADSHEET_ID,
+range:"Hoja1!A2:K500"
+});
 
-    return res.data.values || [];
+return res.data.values || [];
 
-  } catch (error) {
+}catch(e){
 
-    console.log("❌ Error Sheets:", error.message);
-    return [];
+console.log("Sheets error:",e.message);
+return[];
 
-  }
+}
 
 }
 
 
 // ================= PROCESAR CORREO =================
 
-async function procesarYNotificar(correoNetflix, parsedEmail) {
+async function procesarYNotificar(correoNetflix,parsed){
 
-  try {
+try{
 
-    const clientes = await obtenerClientes();
+const clientes=await obtenerClientes();
 
-    const texto = (parsedEmail.text || "").toLowerCase();
-    const html = parsedEmail.html || "";
+const texto=(parsed.text || "").toLowerCase();
+const html=parsed.html || "";
 
-    // detectar perfil
-    let perfilCorreo = "";
+let perfilCorreo=null;
 
-    const matchPerfil =
-      texto.match(/hola,?\s*(\d+):/i) ||
-      texto.match(/perfil\s*(\d+)/i);
+const perfilMatch=
+texto.match(/perfil\s*(\d)/i) ||
+texto.match(/profile\s*(\d)/i) ||
+texto.match(/hola,?\s*(\d)/i);
 
-    if (matchPerfil) perfilCorreo = matchPerfil[1];
+if(perfilMatch){
 
-    // limpiar correo
-    const correoLimpio = correoNetflix
-      .toLowerCase()
-      .replace(/\+.*@/, "@")
-      .trim();
+perfilCorreo=perfilMatch[1];
 
-    const cliente = clientes.find(f => {
+}
 
-      const correo = (f[4] || "")
-        .toLowerCase()
-        .replace(/\+.*@/, "@")
-        .trim();
+const correoLimpio=correoNetflix
+.toLowerCase()
+.replace(/\+.*@/,"@")
+.trim();
 
-      const perfil = (f[6] || "").toLowerCase().trim();
+let cliente=null;
 
-      if (perfilCorreo) {
+if(perfilCorreo){
 
-        return correo === correoLimpio &&
-          (perfil === perfilCorreo || perfil === "completa");
+cliente=clientes.find(f=>{
 
-      }
+const correo=(f[4] || "")
+.toLowerCase()
+.replace(/\+.*@/,"@")
+.trim();
 
-      return correo === correoLimpio;
+const perfil=(f[6] || "").toString().trim();
 
-    });
+return correo===correoLimpio && perfil===perfilCorreo;
 
-    // detectar codigo
-    let codigo = null;
+});
 
-    const codMatch =
-      texto.match(/\b\d{4,6}\b/) ||
-      html.match(/\b\d{4,6}\b/);
+}else{
 
-    if (codMatch) codigo = codMatch[0];
+cliente=clientes.find(f=>{
 
-    // detectar link
-    const linkMatch =
-      html.match(/href="([^"]*update-home[^"]*)"/) ||
-      html.match(/href="([^"]*confirm-account[^"]*)"/) ||
-      html.match(/href="([^"]*netflix.com\/browse[^"]*)"/);
+const correo=(f[4] || "")
+.toLowerCase()
+.replace(/\+.*@/,"@")
+.trim();
 
-    const FRASE =
-      "\n\nEste mensaje es automático. Contacta tu proveedor.";
+return correo===correoLimpio;
 
-    if (cliente) {
+});
 
-      const nombre = cliente[1];
-      const telefono = cliente[2];
+}
 
-      let mensaje = "";
+let codigo=null;
 
-      if (codigo) {
+const codMatch=
+texto.match(/\b\d{4,6}\b/) ||
+html.match(/\b\d{4,6}\b/);
 
-        mensaje =
-          `🍿 *NETFLIX CODIGO*\n\nHola *${nombre}*\n\nTu código es: *${codigo}*${FRASE}`;
+if(codMatch) codigo=codMatch[0];
 
-      }
+const linkMatch=
+html.match(/href="([^"]*update-home[^"]*)"/) ||
+html.match(/href="([^"]*confirm-account[^"]*)"/);
 
-      if (linkMatch) {
+const FRASE="\n\nMensaje automático.";
 
-        mensaje =
-          `🔗 *NETFLIX ACCESO*\n\nHola *${nombre}*\n\nAccede aquí:\n${linkMatch[1]}${FRASE}`;
+if(cliente){
 
-      }
+const nombre=cliente[1];
+const telefono=cliente[2];
 
-      if (mensaje) {
+let mensaje="";
 
-        await enviarWA(telefono, mensaje);
+if(codigo){
 
-      }
+mensaje=`🍿 NETFLIX
 
-    } else {
+Hola ${nombre}
 
-      console.log("⚠️ Cliente no encontrado");
+Tu código es:
 
-      const contenido = codigo || (linkMatch ? linkMatch[1] : "Sin código");
+${codigo}${FRASE}`;
 
-      await enviarWA(
-        ADMIN_PHONE,
-        `⚠️ AVISO ADMIN\n\nCuenta: ${correoNetflix}\nContenido: ${contenido}`
-      );
+}
 
-    }
+if(linkMatch){
 
-  } catch (error) {
+mensaje=`🔗 NETFLIX
 
-    console.log("❌ Error procesando correo:", error.message);
+Hola ${nombre}
 
-  }
+Accede aquí:
+
+${linkMatch[1]}${FRASE}`;
+
+}
+
+if(mensaje){
+
+await enviarWA(telefono,mensaje);
+
+}
+
+}else{
+
+console.log("Cliente no encontrado");
+
+await enviarWA(
+
+ADMIN_PHONE,
+
+`⚠️ ADMIN
+
+Correo: ${correoNetflix}
+
+Codigo: ${codigo || "No detectado"}`
+
+);
+
+}
+
+}catch(e){
+
+console.log("Error procesando:",e.message);
+
+}
 
 }
 
 
-// ================= API CORREOS =================
+// ================= API PANEL =================
 
-app.get("/api/emails", async (req, res) => {
+app.get("/api/emails",async(req,res)=>{
 
-  console.log("📬 Buscando correos Netflix...");
+const client=new ImapFlow({
+host:"imap.gmail.com",
+port:993,
+secure:true,
+auth:{
+user:EMAIL_USER,
+pass:EMAIL_PASS
+}
+});
 
-  const client = new ImapFlow({
-    host: "imap.gmail.com",
-    port: 993,
-    secure: true,
-    auth: {
-      user: EMAIL_USER,
-      pass: EMAIL_PASS
-    }
-  });
+try{
 
-  try {
+await client.connect();
 
-    await client.connect();
+await client.mailboxOpen("INBOX");
 
-    await client.mailboxOpen("INBOX");
+const list=await client.search({from:"netflix"});
 
-    const list = await client.search({
-      from: "netflix"
-    });
+let emails=[];
 
-    let emails = [];
+for(let seq of list.slice(-10).reverse()){
 
-    for (let seq of list.slice(-5).reverse()) {
+const msg=await client.fetchOne(seq,{
+source:true,
+envelope:true
+});
 
-      const msg = await client.fetchOne(seq, {
-        source: true,
-        envelope: true
-      });
+const parsed=await simpleParser(msg.source);
 
-      const parsed = await simpleParser(msg.source);
+const texto=(parsed.text || "").toLowerCase();
+const html=parsed.html || "";
 
-      const texto = (parsed.text || "").toLowerCase();
-      const html = parsed.html || "";
+let codigo=null;
 
-      let codigo = null;
+const codMatch=
+texto.match(/\b\d{4,6}\b/) ||
+html.match(/\b\d{4,6}\b/);
 
-      const codMatch =
-        texto.match(/\b\d{4,6}\b/) ||
-        html.match(/\b\d{4,6}\b/);
+if(codMatch) codigo=codMatch[0];
 
-      if (codMatch) codigo = codMatch[0];
+const linkMatch=
+html.match(/href="([^"]*update-home[^"]*)"/) ||
+html.match(/href="([^"]*confirm-account[^"]*)"/);
 
-      const linkMatch =
-        html.match(/href="([^"]*update-home[^"]*)"/) ||
-        html.match(/href="([^"]*confirm-account[^"]*)"/);
+let contenido="Sin código";
 
-      let contenido = "Sin código";
+if(codigo) contenido=codigo;
+if(linkMatch) contenido=linkMatch[1];
 
-      if (codigo) contenido = codigo;
-      if (linkMatch) contenido = linkMatch[1];
+const correoDestino=
+parsed.to?.value?.[0]?.address ||
+msg.envelope.to?.[0]?.address ||
+"";
 
-      const correoDestino =
-        parsed.to?.value?.[0]?.address ||
-        msg.envelope.to?.[0]?.address ||
-        "";
+const correoCompleto=
+parsed.to?.text || correoDestino;
 
-      const correoCompleto =
-        parsed.to?.text || correoDestino;
+await procesarYNotificar(correoDestino,parsed);
 
-      await procesarYNotificar(correoDestino, parsed);
+emails.push({
+subject:msg.envelope.subject,
+date:new Date(msg.envelope.date).toLocaleString("es-DO"),
+to:correoCompleto,
+contenido:contenido
+});
 
-      emails.push({
-        subject: msg.envelope.subject,
-        date: new Date(msg.envelope.date).toLocaleString("es-DO"),
-        to: correoCompleto,
-        contenido: contenido
-      });
+}
 
-    }
+await client.logout();
 
-    await client.logout();
+res.json({emails});
 
-    res.json({ emails });
+}catch(e){
 
-  } catch (error) {
+console.log("IMAP error:",e.message);
 
-    console.log("❌ Error IMAP:", error.message);
+try{await client.logout();}catch{}
 
-    try { await client.logout(); } catch {}
+res.status(500).json({error:"error correos"});
 
-    res.status(500).json({ error: "Error leyendo correos" });
-
-  }
+}
 
 });
 
 
 // ================= SERVIDOR =================
 
-app.listen(PORT, "0.0.0.0", () => {
+app.listen(PORT,"0.0.0.0",()=>{
 
-  console.log("🚀 Servidor iniciado en puerto", PORT);
+console.log("Servidor activo puerto",PORT);
 
 });
