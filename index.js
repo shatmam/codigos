@@ -11,9 +11,7 @@ const PORT = process.env.PORT || 3000;
 app.use(express.static(path.join(__dirname, "public")));
 
 
-// ===============================
-// CONFIGURACION
-// ===============================
+// ================= CONFIG =================
 
 const EMAIL_USER = "digitalesservicios311@gmail.com";
 const EMAIL_PASS = "rfbmuirunbfwcara";
@@ -25,9 +23,7 @@ const WA_TOKEN = "e8054f40611652ca1329c3a19e7250b4798095c7d0b9d2944b9f35a26b5dba
 const ADMIN_PHONE = "18494736782";
 
 
-// ===============================
-// ENVIAR WHATSAPP
-// ===============================
+// ================= WHATSAPP =================
 
 async function enviarWA(tel, msj) {
 
@@ -43,7 +39,8 @@ async function enviarWA(tel, msj) {
 
     let phone = "+" + numero;
 
-    console.log("📲 Enviando WA a:", phone);
+    console.log("📲 Enviando WA:", phone);
+    console.log("💬 Mensaje:", msj);
 
     const response = await fetch(url, {
       method: "POST",
@@ -63,16 +60,14 @@ async function enviarWA(tel, msj) {
 
   } catch (error) {
 
-    console.log("❌ Error enviando WA:", error.message);
+    console.log("❌ Error WhatsApp:", error.message);
 
   }
 
 }
 
 
-// ===============================
-// LEER GOOGLE SHEETS
-// ===============================
+// ================= GOOGLE SHEETS =================
 
 async function obtenerClientes() {
 
@@ -97,7 +92,7 @@ async function obtenerClientes() {
 
   } catch (error) {
 
-    console.log("❌ Error leyendo Sheets:", error.message);
+    console.log("❌ Error Sheets:", error.message);
     return [];
 
   }
@@ -105,9 +100,7 @@ async function obtenerClientes() {
 }
 
 
-// ===============================
-// PROCESAR CORREO
-// ===============================
+// ================= PROCESAR CORREO =================
 
 async function procesarYNotificar(correoNetflix, parsedEmail) {
 
@@ -115,24 +108,20 @@ async function procesarYNotificar(correoNetflix, parsedEmail) {
 
     const clientes = await obtenerClientes();
 
-    if (!clientes.length) {
-      console.log("⚠️ No hay clientes en Sheets");
-      return;
-    }
-
     const texto = (parsedEmail.text || "").toLowerCase();
     const html = parsedEmail.html || "";
 
     // detectar perfil
     let perfilCorreo = "";
 
-    const matchPerfil = texto.match(/hola,?\s*(\d+):/i) || texto.match(/perfil\s*(\d+)/i);
+    const matchPerfil =
+      texto.match(/hola,?\s*(\d+):/i) ||
+      texto.match(/perfil\s*(\d+)/i);
 
     if (matchPerfil) perfilCorreo = matchPerfil[1];
 
     console.log("🔎 Buscando:", correoNetflix, "Perfil:", perfilCorreo);
 
-    // buscar cliente
     const cliente = clientes.find(f => {
 
       const correo = (f[4] || "").toLowerCase().trim();
@@ -143,12 +132,6 @@ async function procesarYNotificar(correoNetflix, parsedEmail) {
 
     });
 
-    // detectar link
-    const linkMatch =
-      html.match(/href="([^"]*update-home[^"]*)"/) ||
-      html.match(/href="([^"]*confirm-account[^"]*)"/) ||
-      html.match(/href="([^"]*netflix.com\/browse[^"]*)"/);
-
     // detectar codigo
     const codMatch = texto.match(/\b\d{4}\b/);
 
@@ -158,6 +141,12 @@ async function procesarYNotificar(correoNetflix, parsedEmail) {
       codigo = codMatch[0];
     }
 
+    // detectar link
+    const linkMatch =
+      html.match(/href="([^"]*update-home[^"]*)"/) ||
+      html.match(/href="([^"]*confirm-account[^"]*)"/) ||
+      html.match(/href="([^"]*netflix.com\/browse[^"]*)"/);
+
     const FRASE =
       "\n\nEste mensaje es automático. Contacta tu proveedor.";
 
@@ -166,21 +155,19 @@ async function procesarYNotificar(correoNetflix, parsedEmail) {
       const nombre = cliente[1];
       const telefono = cliente[2];
 
-      console.log("✅ Cliente encontrado:", nombre);
-
       let mensaje = "";
-
-      if (linkMatch) {
-
-        mensaje =
-          `*NETFLIX ACCESO* 🔗\n\nHola *${nombre}*\n\nAccede aquí:\n${linkMatch[1]}${FRASE}`;
-
-      }
 
       if (codigo) {
 
         mensaje =
-          `*NETFLIX CODIGO* 🍿\n\nHola *${nombre}*\n\nTu código es: *${codigo}*${FRASE}`;
+          `🍿 *NETFLIX CODIGO*\n\nHola *${nombre}*\n\nTu código es: *${codigo}*${FRASE}`;
+
+      }
+
+      if (linkMatch) {
+
+        mensaje =
+          `🔗 *NETFLIX ACCESO*\n\nHola *${nombre}*\n\nAccede aquí:\n${linkMatch[1]}${FRASE}`;
 
       }
 
@@ -188,15 +175,13 @@ async function procesarYNotificar(correoNetflix, parsedEmail) {
         await enviarWA(telefono, mensaje);
       }
 
-    }
-
-    else {
+    } else {
 
       console.log("⚠️ Cliente no encontrado");
 
-      if (linkMatch || codigo) {
+      if (codigo || linkMatch) {
 
-        const contenido = linkMatch ? linkMatch[1] : codigo;
+        const contenido = codigo || linkMatch[1];
 
         await enviarWA(
           ADMIN_PHONE,
@@ -209,16 +194,14 @@ async function procesarYNotificar(correoNetflix, parsedEmail) {
 
   } catch (error) {
 
-    console.log("❌ Error procesando:", error.message);
+    console.log("❌ Error procesando correo:", error.message);
 
   }
 
 }
 
 
-// ===============================
-// LEER CORREOS NETFLIX
-// ===============================
+// ================= API CORREOS =================
 
 app.get("/api/emails", async (req, res) => {
 
@@ -240,11 +223,11 @@ app.get("/api/emails", async (req, res) => {
 
     await client.mailboxOpen("INBOX");
 
-    let emails = [];
-
-    let list = await client.search({
+    const list = await client.search({
       from: "netflix"
     });
+
+    let emails = [];
 
     for (let seq of list.slice(-5).reverse()) {
 
@@ -255,40 +238,44 @@ app.get("/api/emails", async (req, res) => {
 
       const parsed = await simpleParser(msg.source);
 
-      const subject = (msg.envelope.subject || "").toLowerCase();
+      const texto = (parsed.text || "").toLowerCase();
+      const html = parsed.html || "";
 
-      const esUtil =
-        subject.includes("codigo") ||
-        subject.includes("código") ||
-        subject.includes("temporal") ||
-        subject.includes("hogar") ||
-        subject.includes("inicio");
+      const codMatch = texto.match(/\b\d{4}\b/);
 
-      if (esUtil) {
+      let codigo = null;
 
-        const correoDestino = msg.envelope.to[0].address;
-
-        await procesarYNotificar(correoDestino, parsed);
-
-        emails.push({
-          subject: msg.envelope.subject,
-          date: new Date(msg.envelope.date).toLocaleString("es-DO"),
-          to: correoDestino
-        });
-
+      if (codMatch && codMatch[0] !== "2026") {
+        codigo = codMatch[0];
       }
+
+      const linkMatch =
+        html.match(/href="([^"]*update-home[^"]*)"/) ||
+        html.match(/href="([^"]*confirm-account[^"]*)"/);
+
+      let contenido = null;
+
+      if (codigo) contenido = codigo;
+      if (linkMatch) contenido = linkMatch[1];
+
+      const correoDestino = msg.envelope.to[0].address;
+
+      await procesarYNotificar(correoDestino, parsed);
+
+      emails.push({
+        subject: msg.envelope.subject,
+        date: new Date(msg.envelope.date).toLocaleString("es-DO"),
+        to: correoDestino,
+        contenido: contenido
+      });
 
     }
 
     await client.logout();
 
-    res.json({
-      emails
-    });
+    res.json({ emails });
 
-  }
-
-  catch (error) {
+  } catch (error) {
 
     console.log("❌ Error IMAP:", error.message);
 
@@ -296,18 +283,14 @@ app.get("/api/emails", async (req, res) => {
       await client.logout();
     } catch {}
 
-    res.status(500).json({
-      error: "Error leyendo correos"
-    });
+    res.status(500).json({ error: "Error leyendo correos" });
 
   }
 
 });
 
 
-// ===============================
-// SERVIDOR
-// ===============================
+// ================= SERVIDOR =================
 
 app.listen(PORT, "0.0.0.0", () => {
 
