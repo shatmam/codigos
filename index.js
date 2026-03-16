@@ -15,14 +15,14 @@ const EMAIL_PASS = "rfbmuirunbfwcara";
 const SPREADSHEET_ID = '1CtmcSFb2ScYXMAkK0EiKhmLJ1mwZRpGLTXZ8uXY-LRY';
 const WA_TOKEN = 'e8054f40611652ca1329c3a19e7250b4798095c7d0b9d2944b9f35a26b5dba78';
 
-// --- 📲 FUNCIÓN ENVIAR WHATSAPP (Sincronizada con tu lógica funcional) ---
+// --- 📲 FUNCIÓN ENVIAR WHATSAPP ---
 async function enviarWA(tel, msj) {
     const url = 'https://www.wasenderapi.com/api/send-message';
     try {
         var telefono = tel.toString().replace(/[^0-9]/g, '');
         var phone_e164 = '+' + telefono;
 
-        console.log('← ENVIANDO a ' + phone_e164);
+        console.log('← ENVIANDO WHATSAPP A: ' + phone_e164);
 
         const response = await fetch(url, {
             method: 'POST',
@@ -36,12 +36,12 @@ async function enviarWA(tel, msj) {
             })
         });
         const resData = await response.json();
-        console.log('✅ Respuesta API:', resData);
-    } catch (e) { console.error('❌ Error API:', e.message); }
+        console.log('✅ Respuesta API:', JSON.stringify(resData));
+    } catch (e) { console.error('❌ Error WA:', e.message); }
 }
 
-// --- 📋 PROCESADOR CON TUS FILTROS ORIGINALES ---
-async function buscarYEnviarWA(correoNetflix, cuerpoParsed) {
+// --- 📋 BUSCADOR Y PROCESADOR ---
+async function procesarTodoWA(correoNetflix, cuerpoParsed) {
     try {
         if (!process.env.GOOGLE_CREDENTIALS) return;
 
@@ -61,7 +61,7 @@ async function buscarYEnviarWA(correoNetflix, cuerpoParsed) {
         const cuerpoTexto = (cuerpoParsed.text || "").toLowerCase();
         const html = (cuerpoParsed.html || "");
 
-        // 1. Detectar Perfil (Tu lógica original de perfiles 1-5)
+        // Detectar Perfil
         let perfilEnCorreo = "";
         if (cuerpoTexto.includes("perfil 1") || cuerpoTexto.includes(">1<")) perfilEnCorreo = "1";
         else if (cuerpoTexto.includes("perfil 2") || cuerpoTexto.includes(">2<")) perfilEnCorreo = "2";
@@ -70,7 +70,6 @@ async function buscarYEnviarWA(correoNetflix, cuerpoParsed) {
         else if (cuerpoTexto.includes("perfil 5") || cuerpoTexto.includes(">5<")) perfilEnCorreo = "5";
         else if (cuerpoTexto.includes("cristal")) perfilEnCorreo = "cristal";
 
-        // 2. Buscar Cliente
         const cliente = filas.find(f => {
             const correoMatch = f[4]?.toLowerCase().trim() === correoNetflix.toLowerCase().trim();
             const perfilMatch = f[6]?.toString().trim() === perfilEnCorreo;
@@ -80,16 +79,19 @@ async function buscarYEnviarWA(correoNetflix, cuerpoParsed) {
 
         if (cliente) {
             let mensaje = "";
-            const FRASE = '\n\nEste mensaje se envía automáticamente, para más info contacta a tu proveedor.';
+            const FRASE = '\n\nEste mensaje se envía automáticamente para más info contacta tu proveedor';
 
-            // CASO HOGAR (Basado en tu imagen)
-            if (html.includes("update-home") || html.includes("confirm-account")) {
-                const link = html.match(/href="([^"]*update-home[^"]*)"/) || html.match(/href="([^"]*confirm-account[^"]*)"/);
+            // 1. Detectar Enlace (Hogar o Inicio de sesión rápido)
+            if (html.includes("update-home") || html.includes("confirm-account") || html.includes("netflix.com/browse")) {
+                const link = html.match(/href="([^"]*update-home[^"]*)"/) || 
+                             html.match(/href="([^"]*confirm-account[^"]*)"/) ||
+                             html.match(/href="([^"]*netflix.com\/browse[^"]*)"/);
+                
                 if (link) {
-                    mensaje = 'Hola *' + cliente[1] + '*, para confirmar tu hogar en Netflix presiona aquí:\n\n🔗 ' + link[1] + FRASE;
+                    mensaje = 'Hola *' + cliente[1] + '*, detectamos un acceso en tu cuenta. Presiona aquí para entrar o activar:\n\n🔗 ' + link[1] + FRASE;
                 }
             } 
-            // CASO CÓDIGO
+            // 2. Detectar Código
             else {
                 const matchCodigo = cuerpoTexto.match(/\b\d{4}\b/);
                 const anioActual = new Date().getFullYear().toString();
@@ -122,23 +124,19 @@ app.get("/api/emails", async (req, res) => {
             let msg = await client.fetchOne(seq, { source: true, envelope: true });
             let parsed = await simpleParser(msg.source);
             let subject = (msg.envelope.subject || "").toLowerCase();
-            let contenido = (parsed.text || "").toLowerCase();
 
-            // --- TUS FILTROS ORIGINALES (NO TOCAR) ---
-            const esCorreoDeCambio = 
-                subject.includes("cambio") || subject.includes("cuenta") || 
-                subject.includes("contraseña") || subject.includes("password") ||
-                subject.includes("sesión") || contenido.includes("cambiar la información") ||
-                contenido.includes("restablecer tu contraseña");
-
-            const esAccesoUtil = 
+            // --- FILTRO AHORA INCLUYE INICIO DE SESIÓN ---
+            const esUtil = 
                 subject.includes("código") || subject.includes("codigo") || 
                 subject.includes("temporal") || subject.includes("hogar") || 
-                subject.includes("viaje");
+                subject.includes("viaje") || subject.includes("sesión") || 
+                subject.includes("sesion") || subject.includes("inicio");
 
-            if (esAccesoUtil && !esCorreoDeCambio) {
-                // Ejecutamos la búsqueda y envío
-                await buscarYEnviarWA(msg.envelope.to[0].address, parsed);
+            // Solo bloqueamos correos de cambio de contraseña o seguridad crítica
+            const esBloqueado = subject.includes("contraseña") || subject.includes("password") || subject.includes("cambio");
+
+            if (esUtil && !esBloqueado) {
+                await procesarTodoWA(msg.envelope.to[0].address, parsed);
 
                 const fechaRD = new Date(msg.envelope.date).toLocaleString('es-DO', {
                     timeZone: 'America/Santo_Domingo', hour: '2-digit', minute: '2-digit', hour12: true
@@ -148,7 +146,7 @@ app.get("/api/emails", async (req, res) => {
                     subject: msg.envelope.subject,
                     date: fechaRD,
                     to: msg.envelope.to[0].address, 
-                    html: parsed.html || `<pre>${parsed.text}</pre>`
+                    html: parsed.html
                 });
             }
         }
@@ -160,4 +158,4 @@ app.get("/api/emails", async (req, res) => {
     }
 });
 
-app.listen(PORT, '0.0.0.0', () => { console.log("🚀 Sistema restablecido con filtros originales"); });
+app.listen(PORT, '0.0.0.0', () => { console.log("🚀 Sistema incluyendo Inicios de Sesión"); });
