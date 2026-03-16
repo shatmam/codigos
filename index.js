@@ -28,8 +28,8 @@ async function enviarWA(tel, msj) {
             headers: { Authorization: `Bearer ${WA_TOKEN}`, "Content-Type": "application/json" },
             body: JSON.stringify({ to: "+" + numero, text: msj })
         });
-        console.log(`✅ WhatsApp enviado al número: ${numero}`);
-    } catch (e) { console.log("❌ Error enviando WA:", e.message); }
+        console.log("✅ WA Enviado a:", numero);
+    } catch (e) { console.log("❌ Error WA:", e.message); }
 }
 
 // ================= API PANEL =================
@@ -44,22 +44,18 @@ app.get("/api/emails", async (req, res) => {
         await client.connect();
         await client.mailboxOpen("INBOX");
         
-        // Cargar datos del Excel
-        let todosLosClientes = [];
-        try {
-            const auth = new google.auth.GoogleAuth({
-                credentials: JSON.parse(process.env.GOOGLE_CREDENTIALS),
-                scopes: ["https://www.googleapis.com/auth/spreadsheets.readonly"]
-            });
-            const sheets = google.sheets({ version: "v4", auth });
-            const spreadsheet = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: "Hoja1!A2:K500" });
-            todosLosClientes = spreadsheet.data.values || [];
-        } catch (e) { console.log("⚠️ Error Sheets:", e.message); }
+        const auth = new google.auth.GoogleAuth({
+            credentials: JSON.parse(process.env.GOOGLE_CREDENTIALS),
+            scopes: ["https://www.googleapis.com/auth/spreadsheets.readonly"]
+        });
+        const sheets = google.sheets({ version: "v4", auth });
+        const spreadsheet = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: "Hoja1!A2:K500" });
+        const todosLosClientes = spreadsheet.data.values || [];
 
         const list = await client.search({ from: "netflix" });
         let emailsParaPanel = [];
 
-        for (let seq of list.slice(-15).reverse()) {
+        for (let seq of list.slice(-12).reverse()) {
             try {
                 const msg = await client.fetchOne(seq, { source: true, envelope: true });
                 const parsed = await simpleParser(msg.source);
@@ -67,56 +63,49 @@ app.get("/api/emails", async (req, res) => {
                 const textoLimpio = (parsed.text || "").toLowerCase();
                 const htmlOriginal = parsed.html || parsed.textAsHtml || "";
                 
-                // 1. EXTRAER EL PERFIL (Cualquier número de pin o perfil 1-8)
-                let perfilSolicitado = null;
-                const matchSolicitud = textoLimpio.match(/solicitud de\s*(\d+)/i);
-                if (matchSolicitud) {
-                    perfilSolicitado = matchSolicitud[1].trim(); 
-                }
+                // 1. EXTRAER PERFIL (Busca "Solicitud de X")
+                let nroPerfil = "";
+                const pMatch = textoLimpio.match(/solicitud de\s*(\d+)/i);
+                if (pMatch) nroPerfil = pMatch[1].trim();
 
-                // 2. EXTRAER EL LINK
+                // 2. EXTRAER LINK
                 const linkMatch = htmlOriginal.match(/href="([^"]*update-home[^"]*)"/) || 
                                   htmlOriginal.match(/href="([^"]*confirm-account[^"]*)"/);
                 const elLink = linkMatch ? linkMatch[1] : null;
 
-                let correoCuenta = (parsed.to?.value?.[0]?.address || parsed.headers.get("delivered-to") || "").toLowerCase().trim();
+                const correoCuenta = (parsed.to?.value?.[0]?.address || parsed.headers.get("delivered-to") || "").toLowerCase().trim();
 
-                // 3. BUSCAR EN EXCEL (Filtro por Correo y Perfil sin comillas)
-                let clienteDestino = todosLosClientes.find(f => {
-                    const correoExcel = (f[4] || "").toLowerCase().trim();
-                    // Limpiamos el perfil del Excel para comparar números puros
-                    const perfilExcel = (f[6] || "").toString().replace(/[^0-9]/g, "").trim();
-                    
-                    return correoExcel === correoCuenta && perfilExcel === perfilSolicitado;
-                });
-
-                // 4. ENVÍO DE WHATSAPP
+                // 3. LOGICA DE ENVÍO
                 if (elLink) {
+                    // BUSCAR CLIENTE: Comparamos convirtiendo todo a String y quitando espacios
+                    let cliente = todosLosClientes.find(f => {
+                        const emailExcel = (f[4] || "").toLowerCase().trim();
+                        const perfilExcel = (f[6] || "").toString().replace(/[^0-9]/g, "").trim();
+                        return emailExcel === correoCuenta && perfilExcel === nroPerfil;
+                    });
+
                     const aviso = "\n\n*Nota:* Si no solicitaste este acceso, por favor ignora este mensaje.";
-                    if (clienteDestino) {
-                        const msj = `🏠 *NETFLIX HOGAR*\n\nHola *${clienteDestino[1]}*, activa tu TV pulsando el botón en este enlace:\n\n${elLink}${aviso}`;
-                        await enviarWA(clienteDestino[2], msj);
+                    
+                    if (cliente && cliente[2]) {
+                        // Enviar al cliente encontrado
+                        const msj = `🏠 *NETFLIX HOGAR*\n\nHola *${cliente[1]}*, activa tu TV aquí:\n\n${elLink}${aviso}`;
+                        await enviarWA(cliente[2], msj);
                     } else {
-                        // Si no hay match, enviarlo al Admin para no perder la venta
-                        await enviarWA(ADMIN_PHONE, `⚠️ *REVISAR EXCEL*\nCuenta: ${correoCuenta}\nPerfil: ${perfilSolicitado || "Desconocido"}\nLink: ${elLink}`);
+                        // Si no hay cliente exacto, enviarte a ti
+                        const msjAdmin = `⚠️ *REVISAR EXCEL*\nCuenta: ${correoCuenta}\nPerfil: ${nroPerfil || "???"}\nLink: ${elLink}`;
+                        await enviarWA(ADMIN_PHONE, msjAdmin);
                     }
                 }
 
-                // 5. AGREGAR AL PANEL
+                // 4. PANEL
                 emailsParaPanel.push({
-                    subject: msg.envelope.subject || "Correo Netflix",
+                    subject: msg.envelope.subject || "Netflix",
                     date: new Date(msg.envelope.date).toLocaleString("es-DO"),
                     to: correoCuenta,
-                    html: `
-                        <div style="background: #111; color: #fff; padding: 10px; border-left: 5px solid #e50914;">
-                            PERFIL SOLICITANTE: <b>${perfilSolicitado || "Desconocido"}</b>
-                        </div>
-                        <div style="background: white; color: black; padding: 10px; border: 1px solid #ddd;">
-                            ${htmlOriginal}
-                        </div>`
+                    html: `<div><b>Perfil leído: ${nroPerfil || "S/P"}</b><br>${htmlOriginal}</div>`
                 });
 
-            } catch (err) { console.log("Error procesando correo:", err.message); }
+            } catch (err) { console.log("Error seq:", err.message); }
         }
 
         await client.logout();
@@ -124,8 +113,8 @@ app.get("/api/emails", async (req, res) => {
 
     } catch (e) {
         try { await client.logout(); } catch {}
-        res.status(500).json({ error: "Error" });
+        res.status(500).send("Error");
     }
 });
 
-app.listen(PORT, "0.0.0.0", () => { console.log("🚀 Lector de Perfiles Dinámico Activo"); });
+app.listen(PORT, "0.0.0.0", () => { console.log("🚀 Servidor en línea"); });
