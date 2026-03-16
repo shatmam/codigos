@@ -101,20 +101,27 @@ try{
 
 const clientes=await obtenerClientes();
 
-const texto=(parsed.text || "").toLowerCase();
-const html=parsed.html || "";
+const texto = parsed.text || "";
+const html = parsed.html || "";
+
+// si netflix manda solo html lo convertimos a texto
+let cuerpo = texto;
+
+if(!cuerpo && html){
+cuerpo = html.replace(/<[^>]+>/g," ");
+}
+
+cuerpo = cuerpo.toLowerCase();
 
 let perfilCorreo=null;
 
-const perfilMatch=
-texto.match(/perfil\s*(\d)/i) ||
-texto.match(/profile\s*(\d)/i) ||
-texto.match(/hola,?\s*(\d)/i);
+const perfilMatch =
+cuerpo.match(/perfil\s*(\d)/i) ||
+cuerpo.match(/profile\s*(\d)/i) ||
+cuerpo.match(/hola,?\s*(\d)/i);
 
 if(perfilMatch){
-
-perfilCorreo=perfilMatch[1];
-
+perfilCorreo = perfilMatch[1];
 }
 
 const correoLimpio=correoNetflix
@@ -156,13 +163,11 @@ return correo===correoLimpio;
 
 let codigo=null;
 
-const codMatch=
-texto.match(/\b\d{4,6}\b/) ||
-html.match(/\b\d{4,6}\b/);
+const codMatch = cuerpo.match(/\b\d{4,6}\b/);
 
 if(codMatch) codigo=codMatch[0];
 
-const linkMatch=
+const linkMatch =
 html.match(/href="([^"]*update-home[^"]*)"/) ||
 html.match(/href="([^"]*confirm-account[^"]*)"/);
 
@@ -200,9 +205,7 @@ ${linkMatch[1]}${FRASE}`;
 }
 
 if(mensaje){
-
 await enviarWA(telefono,mensaje);
-
 }
 
 }else{
@@ -217,7 +220,7 @@ ADMIN_PHONE,
 
 Correo: ${correoNetflix}
 
-Codigo: ${codigo || "No detectado"}`
+Contenido: ${codigo || "No detectado"}`
 
 );
 
@@ -265,18 +268,24 @@ envelope:true
 
 const parsed=await simpleParser(msg.source);
 
-const texto=(parsed.text || "").toLowerCase();
-const html=parsed.html || "";
+const texto = parsed.text || "";
+const html = parsed.html || "";
+
+let cuerpo = texto;
+
+if(!cuerpo && html){
+cuerpo = html.replace(/<[^>]+>/g," ");
+}
+
+cuerpo = cuerpo.toLowerCase();
 
 let codigo=null;
 
-const codMatch=
-texto.match(/\b\d{4,6}\b/) ||
-html.match(/\b\d{4,6}\b/);
+const codMatch=cuerpo.match(/\b\d{4,6}\b/);
 
 if(codMatch) codigo=codMatch[0];
 
-const linkMatch=
+const linkMatch =
 html.match(/href="([^"]*update-home[^"]*)"/) ||
 html.match(/href="([^"]*confirm-account[^"]*)"/);
 
@@ -285,21 +294,25 @@ let contenido="Sin código";
 if(codigo) contenido=codigo;
 if(linkMatch) contenido=linkMatch[1];
 
-const correoDestino=
-parsed.to?.value?.[0]?.address ||
-msg.envelope.to?.[0]?.address ||
-"";
+let correoDestino="";
 
-const correoCompleto=
-parsed.to?.text || correoDestino;
+if(parsed.to?.value?.length){
+correoDestino=parsed.to.value[0].address;
+}
+
+if(!correoDestino && parsed.headers.get("delivered-to")){
+correoDestino=parsed.headers.get("delivered-to");
+}
+
+correoDestino=correoDestino.toLowerCase().trim();
 
 await procesarYNotificar(correoDestino,parsed);
 
 emails.push({
-subject:msg.envelope.subject,
+subject:msg.envelope.subject || "Correo Netflix",
 date:new Date(msg.envelope.date).toLocaleString("es-DO"),
-to:correoCompleto,
-contenido:contenido
+to:correoDestino || "Correo no detectado",
+contenido:contenido || cuerpo.substring(0,120)
 });
 
 }
