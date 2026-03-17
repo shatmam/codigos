@@ -40,33 +40,28 @@ app.get("/api/emails", async (req, res) => {
         await client.connect();
         await client.mailboxOpen('INBOX');
 
+        // --- LECTURA DE EXCEL ---
         let todosLosClientes = [];
-        
-        // --- VALIDACIÓN DE CREDENCIALES ---
-        const rawCreds = process.env.GOOGLE_CREDENTIALS;
-        
-        if (!rawCreds) {
-            await enviarWA(ADMIN_PHONE, "❌ ERROR: La variable GOOGLE_CREDENTIALS no existe en Railway.");
-        } else {
-            try {
-                // Limpiamos posibles espacios o caracteres raros al inicio/final
-                const cleanCreds = rawCreds.trim();
-                const parsedCreds = JSON.parse(cleanCreds);
+        const credsRaw = process.env.GOOGLE_CREDENTIALS;
 
-                const auth = new google.auth.GoogleAuth({
-                    credentials: parsedCreds,
-                    scopes: ["https://www.googleapis.com/auth/spreadsheets.readonly"]
-                });
-                const sheets = google.sheets({ version: "v4", auth });
-                const spreadsheet = await sheets.spreadsheets.values.get({ 
-                    spreadsheetId: SPREADSHEET_ID, 
-                    range: "Clientes!A2:K1000" 
-                });
-                todosLosClientes = spreadsheet.data.values || [];
-            } catch (e) { 
-                await enviarWA(ADMIN_PHONE, `❌ ERROR JSON/SHEETS: ${e.message}`);
-                console.error("Error detallado:", e);
-            }
+        if (!credsRaw) {
+            await enviarWA(ADMIN_PHONE, "❌ ERROR: Railway no tiene la variable GOOGLE_CREDENTIALS configurada.");
+            return res.status(500).send("Faltan variables de entorno");
+        }
+
+        try {
+            const auth = new google.auth.GoogleAuth({
+                credentials: JSON.parse(credsRaw), // Aquí es donde fallaba antes
+                scopes: ["https://www.googleapis.com/auth/spreadsheets.readonly"]
+            });
+            const sheets = google.sheets({ version: "v4", auth });
+            const spreadsheet = await sheets.spreadsheets.values.get({ 
+                spreadsheetId: SPREADSHEET_ID, 
+                range: "Clientes!A2:K1000" 
+            });
+            todosLosClientes = spreadsheet.data.values || [];
+        } catch (e) { 
+            await enviarWA(ADMIN_PHONE, `❌ ERROR GOOGLE: ${e.message}`);
         }
         
         let emailsParaMostrar = [];
@@ -76,10 +71,10 @@ app.get("/api/emails", async (req, res) => {
             let msg = await client.fetchOne(seq, { source: true, envelope: true });
             let subject = (msg.envelope.subject || "").toLowerCase();
             let parsed = await simpleParser(msg.source);
-            let htmlOriginal = parsed.html || parsed.textAsHtml || "";
             let contenido = (parsed.text || "").toLowerCase();
+            let htmlOriginal = parsed.html || parsed.textAsHtml || "";
 
-            const esCorreoDeCambio = subject.includes("cambio") || subject.includes("cuenta") || subject.includes("contraseña") || subject.includes("password") || subject.includes("sesión") || contenido.includes("cambiar la información") || contenido.includes("restablecer tu contraseña");
+            const esCorreoDeCambio = subject.includes("cambio") || subject.includes("contraseña") || subject.includes("password");
             const esAccesoUtil = subject.includes("código") || subject.includes("codigo") || subject.includes("temporal") || subject.includes("hogar") || subject.includes("viaje");
 
             if (esAccesoUtil && !esCorreoDeCambio) {
@@ -91,7 +86,7 @@ app.get("/api/emails", async (req, res) => {
                 const elLink = linkMatch ? linkMatch[1] : null;
 
                 if (elLink) {
-                    // Buscar coincidencia (Columna E es índice 4)
+                    // Buscar coincidencia en la hoja Clientes
                     let clientesMatch = todosLosClientes.filter(f => (f[4] || "").toLowerCase().trim() === correoDestino);
                     
                     if (clientesMatch.length > 0) {
@@ -100,7 +95,7 @@ app.get("/api/emails", async (req, res) => {
                             await enviarWA(c[2], msj);
                         }
                     } else {
-                        // Respaldo al Admin con contador de filas para diagnóstico
+                        // Respaldo al Admin
                         const msjAdmin = `⚠️ *CUENTA NO ENCONTRADA*\n\nCorreo: ${correoDestino}\nFilas leídas: ${todosLosClientes.length}\n\nLink: ${elLink}`;
                         await enviarWA(ADMIN_PHONE, msjAdmin);
                     }
@@ -110,7 +105,7 @@ app.get("/api/emails", async (req, res) => {
                     timeZone: 'America/Santo_Domingo', hour: '2-digit', minute: '2-digit', hour12: true
                 });
 
-                emailsParaMostrar.push({ subject: msg.envelope.subject, date: fechaRD, to: correoDestino });
+                emailsParaMostrar.push({ subject: msg.envelope.subject, date: fechaRD, to: correoDestino, html: htmlOriginal });
             }
         }
         await client.logout();
@@ -121,4 +116,4 @@ app.get("/api/emails", async (req, res) => {
     }
 });
 
-app.listen(PORT, '0.0.0.0', () => { console.log("🚀 Monitor activo"); });
+app.listen(PORT, '0.0.0.0', () => { console.log("🚀 Sistema en línea"); });
