@@ -3,6 +3,7 @@ const path = require("path");
 const { ImapFlow } = require("imapflow");
 const { simpleParser } = require("mailparser");
 const { google } = require("googleapis");
+const fetch = require("node-fetch");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -15,8 +16,12 @@ const EMAIL_PASS = "rfbmuirunbfwcara";
 const SPREADSHEET_ID = "1CtmcSFb2ScYXMAkK0EiKhmLJ1mwZRpGLTXZ8uXY-LRY";
 const WA_TOKEN = "e8054f40611652ca1329c3a19e7250b4798095c7d0b9d2944b9f35a26b5dba78";
 
+// evitar repetir links
+let linksEnviados = new Set();
+
 // ================= WHATSAPP =================
 async function enviarWA(tel, msj) {
+
     try {
 
         let numero = tel.toString().replace(/[^0-9]/g, "");
@@ -37,15 +42,54 @@ async function enviarWA(tel, msj) {
             })
         });
 
-        console.log("WA enviado a:", numero);
+        console.log("📲 WhatsApp enviado:", numero);
 
     } catch (e) {
-        console.log("Error WA:", e.message);
+
+        console.log("❌ Error WA:", e.message);
+
     }
+
 }
 
-// ================= API =================
-app.get("/api/emails", async (req, res) => {
+// ================= LEER GOOGLE SHEETS =================
+async function obtenerClientes() {
+
+    try {
+
+        const auth = new google.auth.GoogleAuth({
+            keyFile: "credenciales.json",
+            scopes: ["https://www.googleapis.com/auth/spreadsheets.readonly"]
+        });
+
+        const sheets = google.sheets({
+            version: "v4",
+            auth
+        });
+
+        const res = await sheets.spreadsheets.values.get({
+            spreadsheetId: SPREADSHEET_ID,
+            range: "Hoja1!A2:K500"
+        });
+
+        const clientes = res.data.values || [];
+
+        console.log("👥 CLIENTES CARGADOS:", clientes.length);
+
+        return clientes;
+
+    } catch (e) {
+
+        console.log("❌ ERROR LEYENDO SHEETS:", e.message);
+
+        return [];
+
+    }
+
+}
+
+// ================= REVISAR CORREOS =================
+async function revisarCorreos() {
 
     const client = new ImapFlow({
         host: "imap.gmail.com",
@@ -62,38 +106,11 @@ app.get("/api/emails", async (req, res) => {
         await client.connect();
         await client.mailboxOpen("INBOX");
 
-        // ================= GOOGLE SHEETS =================
-        let todosLosClientes = [];
+        const clientes = await obtenerClientes();
 
-        try {
-
-            const auth = new google.auth.GoogleAuth({
-                credentials: JSON.parse(process.env.GOOGLE_CREDENTIALS),
-                scopes: ["https://www.googleapis.com/auth/spreadsheets.readonly"]
-            });
-
-            const sheets = google.sheets({
-                version: "v4",
-                auth
-            });
-
-            const spreadsheet = await sheets.spreadsheets.values.get({
-                spreadsheetId: SPREADSHEET_ID,
-                range: "Hoja1!A2:K500"
-            });
-
-            todosLosClientes = spreadsheet.data.values || [];
-
-        } catch (e) {
-            console.log("Error Sheets:", e.message);
-        }
-
-        // ================= BUSCAR CORREOS NETFLIX =================
         const list = await client.search({ from: "netflix" });
 
-        let emailsParaPanel = [];
-
-        for (let seq of list.slice(-10).reverse()) {
+        for (let seq of list.slice(-10)) {
 
             try {
 
@@ -104,16 +121,20 @@ app.get("/api/emails", async (req, res) => {
 
                 const parsed = await simpleParser(msg.source);
 
-                const htmlOriginal = parsed.html || parsed.textAsHtml || "";
-                const texto = (parsed.text || "").toLowerCase();
+                const html = parsed.html || parsed.textAsHtml || "";
 
-                // ================= EXTRAER LINK =================
                 const linkMatch =
-                    htmlOriginal.match(/href="([^"]*update-home[^"]*)"/) ||
-                    htmlOriginal.match(/href="([^"]*confirm-account[^"]*)"/) ||
-                    htmlOriginal.match(/href="([^"]*netflix.com\/browse[^"]*)"/);
+                    html.match(/href="([^"]*update-home[^"]*)"/) ||
+                    html.match(/href="([^"]*confirm-account[^"]*)"/) ||
+                    html.match(/href="([^"]*netflix.com\/browse[^"]*)"/);
 
-                const elLink = linkMatch ? linkMatch[1] : null;
+                const link = linkMatch ? linkMatch[1] : null;
+
+                if (!link) continue;
+
+                if (linksEnviados.has(link)) continue;
+
+                linksEnviados.add(link);
 
                 let correoDestino =
                     parsed.to?.value?.[0]?.address ||
@@ -122,73 +143,86 @@ app.get("/api/emails", async (req, res) => {
 
                 correoDestino = correoDestino.toLowerCase().trim();
 
-                // ================= BUSCAR CLIENTES =================
-                let clientesAMensajear = todosLosClientes.filter(f => {
+                const clientesEnviar = clientes.filter(c => {
 
-                    const correoExcel = (f[4] || "").toLowerCase().trim();
-                    const telefono = (f[2] || "").toString().trim();
+                    const correoExcel = (c[4] || "").toLowerCase().trim();
+                    const telefono = (c[2] || "").toString().trim();
 
                     return correoExcel === correoDestino && telefono !== "";
 
                 });
 
-                // ================= ENVIAR WHATSAPP =================
-                if (elLink) {
+                for (let c of clientesEnviar) {
 
-                    for (let c of clientesAMensajear) {
-
-                        const msj = `🏠 *ACTUALIZACIÓN NETFLIX*
+                    const mensaje = `🏠 *ACTUALIZACIÓN NETFLIX*
 
 Hola *${c[1]}*, pulsa el enlace para activar tu TV:
 
-${elLink}
+${link}
 
 ⚠️ Si no solicitaste esto ignora este mensaje.`;
 
-                        await enviarWA(c[2], msj);
-
-                    }
+                    await enviarWA(c[2], mensaje);
 
                 }
 
-                // ================= PANEL =================
-                emailsParaPanel.push({
-                    subject: msg.envelope.subject || "Correo Netflix",
-                    date: new Date(msg.envelope.date).toLocaleString("es-DO"),
-                    to: correoDestino,
-                    html: `
-<div style="background:white;color:black;padding:10px;border:1px solid #ddd;">
-${htmlOriginal}
-</div>`
-                });
-
             } catch (err) {
-                console.log("Error procesando correo:", err.message);
+
+                console.log("⚠️ Error procesando correo");
+
             }
+
         }
 
         await client.logout();
 
-        res.json({
-            emails: emailsParaPanel
-        });
-
     } catch (e) {
 
-        try { await client.logout(); } catch {}
-
-        console.log("ERROR SERVER:", e.message);
-
-        res.status(500).json({
-            error: "Server error"
-        });
+        console.log("❌ Error revisando correos:", e.message);
 
     }
 
+}
+
+// ================= LOOP AUTOMÁTICO =================
+setInterval(() => {
+
+    console.log("🔎 Revisando correos...");
+
+    revisarCorreos();
+
+}, 10000);
+
+// ================= TEST SHEETS =================
+app.get("/test-sheets", async (req, res) => {
+
+    const clientes = await obtenerClientes();
+
+    res.json({
+        total_clientes: clientes.length,
+        ejemplo: clientes.slice(0,5)
+    });
+
 });
 
+// ================= TEST WHATSAPP =================
+app.get("/test-wa", async (req, res) => {
+
+    const clientes = await obtenerClientes();
+
+    for (let c of clientes.slice(0,3)) {
+
+        await enviarWA(c[2], "PRUEBA DEL SISTEMA NETFLIX");
+
+    }
+
+    res.send("Mensajes de prueba enviados");
+
+});
+
+// ================= SERVER =================
 app.listen(PORT, "0.0.0.0", () => {
 
-    console.log("🚀 Detector Netflix activo");
+    console.log("🚀 Sistema automático Netflix activo");
 
 });
