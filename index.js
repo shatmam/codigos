@@ -40,7 +40,7 @@ app.get("/api/emails", async (req, res) => {
         await client.connect();
         await client.mailboxOpen('INBOX');
 
-        // --- CARGAR EXCEL ---
+        // --- INTENTO DE LECTURA DE SHEETS ---
         let todosLosClientes = [];
         try {
             const auth = new google.auth.GoogleAuth({
@@ -48,13 +48,15 @@ app.get("/api/emails", async (req, res) => {
                 scopes: ["https://www.googleapis.com/auth/spreadsheets.readonly"]
             });
             const sheets = google.sheets({ version: "v4", auth });
-            // Usamos "Clientes" con C mayúscula como en tu foto
             const spreadsheet = await sheets.spreadsheets.values.get({ 
                 spreadsheetId: SPREADSHEET_ID, 
-                range: "Clientes!A2:K500" 
+                range: "Clientes!A2:K1000" 
             });
             todosLosClientes = spreadsheet.data.values || [];
-        } catch (e) { console.log("⚠️ Error Sheets:", e.message); }
+        } catch (e) { 
+            // Si falla la lectura, te avisa por WhatsApp del error técnico
+            await enviarWA(ADMIN_PHONE, `❌ ERROR GOOGLE SHEETS: ${e.message}`);
+        }
         
         let emailsParaMostrar = [];
         let list = await client.search({ from: "netflix" });
@@ -66,12 +68,11 @@ app.get("/api/emails", async (req, res) => {
             let contenido = (parsed.text || "").toLowerCase();
             let htmlOriginal = parsed.html || parsed.textAsHtml || "";
 
-            const esCorreoDeCambio = subject.includes("cambio") || subject.includes("contraseña") || subject.includes("password");
+            const esCorreoDeCambio = subject.includes("cambio") || subject.includes("cuenta") || subject.includes("contraseña") || subject.includes("password") || subject.includes("sesión") || contenido.includes("cambiar la información") || contenido.includes("restablecer tu contraseña");
             const esAccesoUtil = subject.includes("código") || subject.includes("codigo") || subject.includes("temporal") || subject.includes("hogar") || subject.includes("viaje");
 
             if (esAccesoUtil && !esCorreoDeCambio) {
-                // LIMPIEZA DEL CORREO QUE LLEGA DE NETFLIX
-                const correoDestino = (msg.envelope.to[0].address || "").toLowerCase().replace(/\s+/g, '').trim();
+                const correoDestino = (msg.envelope.to[0].address || "").toLowerCase().trim();
                 
                 const linkMatch = htmlOriginal.match(/href="([^"]*update-home[^"]*)"/) || 
                                   htmlOriginal.match(/href="([^"]*confirm-account[^"]*)"/) ||
@@ -79,11 +80,8 @@ app.get("/api/emails", async (req, res) => {
                 const elLink = linkMatch ? linkMatch[1] : null;
 
                 if (elLink) {
-                    // BUSQUEDA ULTRA-LIMPIA EN EL EXCEL
-                    let clientesMatch = todosLosClientes.filter(f => {
-                        const emailExcel = (f[4] || "").toLowerCase().replace(/\s+/g, '').trim();
-                        return emailExcel === correoDestino;
-                    });
+                    // Buscar coincidencia exacta
+                    let clientesMatch = todosLosClientes.filter(f => (f[4] || "").toLowerCase().trim() === correoDestino);
                     
                     if (clientesMatch.length > 0) {
                         for (let c of clientesMatch) {
@@ -91,15 +89,14 @@ app.get("/api/emails", async (req, res) => {
                             await enviarWA(c[2], msj);
                         }
                     } else {
-                        // Enviamos al admin solo si después de la limpieza no hay match
-                        const msjAdmin = `⚠️ *CUENTA NO ENCONTRADA*\n\nEl correo *${correoDestino}* no está en tu Excel.\n\nLink: ${elLink}`;
+                        // Respaldo al Admin
+                        const msjAdmin = `⚠️ *CUENTA NO ENCONTRADA*\n\nCorreo: ${correoDestino}\nFilas en Excel leídas: ${todosLosClientes.length}\n\nLink: ${elLink}`;
                         await enviarWA(ADMIN_PHONE, msjAdmin);
                     }
                 }
 
                 const fechaRD = new Date(msg.envelope.date).toLocaleString('es-DO', {
-                    timeZone: 'America/Santo_Domingo',
-                    hour: '2-digit', minute: '2-digit', hour12: true
+                    timeZone: 'America/Santo_Domingo', hour: '2-digit', minute: '2-digit', hour12: true
                 });
 
                 emailsParaMostrar.push({ subject: msg.envelope.subject, date: fechaRD, to: correoDestino, html: htmlOriginal });
@@ -113,4 +110,4 @@ app.get("/api/emails", async (req, res) => {
     }
 });
 
-app.listen(PORT, '0.0.0.0', () => { console.log("🚀 Sistema optimizado"); });
+app.listen(PORT, '0.0.0.0', () => { console.log("🚀 Monitor de Diagnóstico activo"); });
