@@ -21,18 +21,28 @@ const ADMIN_PHONE = process.env.ADMIN_PHONE;
 async function enviarWA(tel, msj) {
     try {
         let numero = tel.toString().replace(/[^0-9]/g, "");
-        if (!numero.startsWith("1")) numero = "1" + numero;
+        // Asegurar formato internacional sin el "+" (Wasender estándar)
+        if (!numero.startsWith("1") && numero.length === 10) numero = "1" + numero;
         
-        // Se envía el número limpio sin el "+" para evitar errores de la API
+        console.log(`Intentando enviar a: ${numero}`);
+
         const response = await fetch("https://www.wasenderapi.com/api/send-message", {
             method: "POST",
-            headers: { "Authorization": `Bearer ${WA_TOKEN}`, "Content-Type": "application/json" },
-            body: JSON.stringify({ to: numero, text: msj })
+            headers: { 
+                "Authorization": `Bearer ${WA_TOKEN}`, 
+                "Content-Type": "application/json" 
+            },
+            body: JSON.stringify({ 
+                to: numero, 
+                text: msj 
+            })
         });
         
-        const data = await response.json();
-        console.log(`Estado envío a ${numero}:`, data);
-    } catch (e) { console.log("❌ Error WA:", e.message); }
+        const resData = await response.json();
+        console.log("Resultado API WhatsApp:", resData);
+    } catch (e) { 
+        console.log("❌ Error WA:", e.message); 
+    }
 }
 
 app.get("/api/emails", async (req, res) => {
@@ -58,14 +68,19 @@ app.get("/api/emails", async (req, res) => {
                 range: "Clientes!A2:K1000" 
             });
             todosLosClientes = spreadsheet.data.values || [];
+            console.log(`Clientes cargados: ${todosLosClientes.length}`);
         } catch (e) { 
+            console.log("Error Sheets:", e.message);
             await enviarWA(ADMIN_PHONE, `❌ ERROR GOOGLE SHEETS: ${e.message}`);
         }
         
         let emailsParaMostrar = [];
+        // Buscamos correos de Netflix
         let list = await client.search({ from: "netflix" });
+        console.log(`Correos encontrados: ${list.length}`);
 
-        for (let seq of list.slice(-10).reverse()) {
+        // Revisamos los últimos 15 correos para mayor margen
+        for (let seq of list.slice(-15).reverse()) {
             let msg = await client.fetchOne(seq, { source: true, envelope: true });
             let subject = (msg.envelope.subject || "").toLowerCase();
             let parsed = await simpleParser(msg.source);
@@ -84,6 +99,7 @@ app.get("/api/emails", async (req, res) => {
                 const elLink = linkMatch ? linkMatch[1] : null;
 
                 if (elLink) {
+                    console.log(`Link encontrado para: ${correoDestino}`);
                     let clientesMatch = todosLosClientes.filter(f => (f[4] || "").toLowerCase().trim() === correoDestino);
                     
                     if (clientesMatch.length > 0) {
@@ -92,7 +108,7 @@ app.get("/api/emails", async (req, res) => {
                             await enviarWA(c[2], msj);
                         }
                     } else {
-                        const msjAdmin = `⚠️ *CUENTA NO ENCONTRADA*\n\nCorreo: ${correoDestino}\nFilas en Excel leídas: ${todosLosClientes.length}\n\nLink: ${elLink}`;
+                        const msjAdmin = `⚠️ *CUENTA NO ENCONTRADA*\n\nCorreo: ${correoDestino}\nLink: ${elLink}`;
                         await enviarWA(ADMIN_PHONE, msjAdmin);
                     }
                 }
@@ -107,6 +123,7 @@ app.get("/api/emails", async (req, res) => {
         await client.logout();
         res.json({ emails: emailsParaMostrar });
     } catch (error) {
+        console.log("Error en el proceso:", error.message);
         if (client) await client.logout().catch(() => {});
         res.status(500).json({ error: "Error" });
     }
