@@ -11,7 +11,7 @@ const PORT = process.env.PORT || 3000;
 
 app.use(express.static(path.join(__dirname, "public")));
 
-// ================= CONFIGURACIÓN (CORREGIDO PARA RAILWAY) =================
+// ================= CONFIGURACIÓN =================
 const EMAIL_USER = process.env.EMAIL_USER; 
 const EMAIL_PASS = process.env.EMAIL_PASS; 
 const SPREADSHEET_ID = process.env.SPREADSHEET_ID; 
@@ -22,11 +22,16 @@ async function enviarWA(tel, msj) {
     try {
         let numero = tel.toString().replace(/[^0-9]/g, "");
         if (!numero.startsWith("1")) numero = "1" + numero;
-        await fetch("https://www.wasenderapi.com/api/send-message", {
+        
+        // Se envía el número limpio sin el "+" para evitar errores de la API
+        const response = await fetch("https://www.wasenderapi.com/api/send-message", {
             method: "POST",
             headers: { "Authorization": `Bearer ${WA_TOKEN}`, "Content-Type": "application/json" },
-            body: JSON.stringify({ to: "+" + numero, text: msj })
+            body: JSON.stringify({ to: numero, text: msj })
         });
+        
+        const data = await response.json();
+        console.log(`Estado envío a ${numero}:`, data);
     } catch (e) { console.log("❌ Error WA:", e.message); }
 }
 
@@ -41,7 +46,6 @@ app.get("/api/emails", async (req, res) => {
         await client.connect();
         await client.mailboxOpen('INBOX');
 
-        // --- INTENTO DE LECTURA DE SHEETS ---
         let todosLosClientes = [];
         try {
             const auth = new google.auth.GoogleAuth({
@@ -55,7 +59,6 @@ app.get("/api/emails", async (req, res) => {
             });
             todosLosClientes = spreadsheet.data.values || [];
         } catch (e) { 
-            // Si falla la lectura, te avisa por WhatsApp del error técnico
             await enviarWA(ADMIN_PHONE, `❌ ERROR GOOGLE SHEETS: ${e.message}`);
         }
         
@@ -81,7 +84,6 @@ app.get("/api/emails", async (req, res) => {
                 const elLink = linkMatch ? linkMatch[1] : null;
 
                 if (elLink) {
-                    // Buscar coincidencia exacta
                     let clientesMatch = todosLosClientes.filter(f => (f[4] || "").toLowerCase().trim() === correoDestino);
                     
                     if (clientesMatch.length > 0) {
@@ -90,7 +92,6 @@ app.get("/api/emails", async (req, res) => {
                             await enviarWA(c[2], msj);
                         }
                     } else {
-                        // Respaldo al Admin
                         const msjAdmin = `⚠️ *CUENTA NO ENCONTRADA*\n\nCorreo: ${correoDestino}\nFilas en Excel leídas: ${todosLosClientes.length}\n\nLink: ${elLink}`;
                         await enviarWA(ADMIN_PHONE, msjAdmin);
                     }
