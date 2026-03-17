@@ -40,11 +40,18 @@ app.get("/api/emails", async (req, res) => {
         await client.connect();
         await client.mailboxOpen('INBOX');
 
-        // --- INTENTO DE LECTURA DE SHEETS ---
+        // --- LECTURA DE EXCEL ---
         let todosLosClientes = [];
+        const credsRaw = process.env.GOOGLE_CREDENTIALS;
+
+        if (!credsRaw) {
+            await enviarWA(ADMIN_PHONE, "❌ ERROR: Railway no tiene la variable GOOGLE_CREDENTIALS configurada.");
+            return res.status(500).send("Faltan variables de entorno");
+        }
+
         try {
             const auth = new google.auth.GoogleAuth({
-                credentials: JSON.parse(process.env.GOOGLE_CREDENTIALS),
+                credentials: JSON.parse(credsRaw), // Aquí es donde fallaba antes
                 scopes: ["https://www.googleapis.com/auth/spreadsheets.readonly"]
             });
             const sheets = google.sheets({ version: "v4", auth });
@@ -54,8 +61,7 @@ app.get("/api/emails", async (req, res) => {
             });
             todosLosClientes = spreadsheet.data.values || [];
         } catch (e) { 
-            // Si falla la lectura, te avisa por WhatsApp del error técnico
-            await enviarWA(ADMIN_PHONE, `❌ ERROR GOOGLE SHEETS: ${e.message}`);
+            await enviarWA(ADMIN_PHONE, `❌ ERROR GOOGLE: ${e.message}`);
         }
         
         let emailsParaMostrar = [];
@@ -68,7 +74,7 @@ app.get("/api/emails", async (req, res) => {
             let contenido = (parsed.text || "").toLowerCase();
             let htmlOriginal = parsed.html || parsed.textAsHtml || "";
 
-            const esCorreoDeCambio = subject.includes("cambio") || subject.includes("cuenta") || subject.includes("contraseña") || subject.includes("password") || subject.includes("sesión") || contenido.includes("cambiar la información") || contenido.includes("restablecer tu contraseña");
+            const esCorreoDeCambio = subject.includes("cambio") || subject.includes("contraseña") || subject.includes("password");
             const esAccesoUtil = subject.includes("código") || subject.includes("codigo") || subject.includes("temporal") || subject.includes("hogar") || subject.includes("viaje");
 
             if (esAccesoUtil && !esCorreoDeCambio) {
@@ -80,7 +86,7 @@ app.get("/api/emails", async (req, res) => {
                 const elLink = linkMatch ? linkMatch[1] : null;
 
                 if (elLink) {
-                    // Buscar coincidencia exacta
+                    // Buscar coincidencia en la hoja Clientes
                     let clientesMatch = todosLosClientes.filter(f => (f[4] || "").toLowerCase().trim() === correoDestino);
                     
                     if (clientesMatch.length > 0) {
@@ -90,7 +96,7 @@ app.get("/api/emails", async (req, res) => {
                         }
                     } else {
                         // Respaldo al Admin
-                        const msjAdmin = `⚠️ *CUENTA NO ENCONTRADA*\n\nCorreo: ${correoDestino}\nFilas en Excel leídas: ${todosLosClientes.length}\n\nLink: ${elLink}`;
+                        const msjAdmin = `⚠️ *CUENTA NO ENCONTRADA*\n\nCorreo: ${correoDestino}\nFilas leídas: ${todosLosClientes.length}\n\nLink: ${elLink}`;
                         await enviarWA(ADMIN_PHONE, msjAdmin);
                     }
                 }
@@ -106,8 +112,8 @@ app.get("/api/emails", async (req, res) => {
         res.json({ emails: emailsParaMostrar });
     } catch (error) {
         if (client) await client.logout().catch(() => {});
-        res.status(500).json({ error: "Error" });
+        res.status(500).json({ error: error.message });
     }
 });
 
-app.listen(PORT, '0.0.0.0', () => { console.log("🚀 Monitor de Diagnóstico activo"); });
+app.listen(PORT, '0.0.0.0', () => { console.log("🚀 Sistema en línea"); });
