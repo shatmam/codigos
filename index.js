@@ -15,44 +15,32 @@ const EMAIL_USER = "digitalesservicios311@gmail.com";
 const EMAIL_PASS = "rfbmuirunbfwcara"; 
 const SPREADSHEET_ID = "1CtmcSFb2ScYXMAkK0EiKhmLJ1mwZRpGLTXZ8uXY-LRY"; 
 const WA_TOKEN = "e8054f40611652ca1329c3a19e7250b4798095c7d0b9d2944b9f35a26b5dba78"; 
-const ADMIN_PHONE = "18494736782"; // Tu número para recibir lo que no se asigne
+const ADMIN_PHONE = "18494736782"; 
 
-// ================= FUNCIÓN WHATSAPP =================
 async function enviarWA(tel, msj) {
     try {
         let numero = tel.toString().replace(/[^0-9]/g, "");
         if (!numero.startsWith("1")) numero = "1" + numero;
-        
         await fetch("https://www.wasenderapi.com/api/send-message", {
             method: "POST",
-            headers: { 
-                "Authorization": `Bearer ${WA_TOKEN}`, 
-                "Content-Type": "application/json" 
-            },
+            headers: { "Authorization": `Bearer ${WA_TOKEN}`, "Content-Type": "application/json" },
             body: JSON.stringify({ to: "+" + numero, text: msj })
         });
-        console.log("✅ WA Enviado a:", numero);
-    } catch (e) { 
-        console.log("❌ Error WA:", e.message); 
-    }
+    } catch (e) { console.log("❌ Error WA:", e.message); }
 }
 
-// ================= API PANEL =================
 app.get("/api/emails", async (req, res) => {
     const client = new ImapFlow({
-        host: "imap.gmail.com",
-        port: 993,
-        secure: true,
+        host: "imap.gmail.com", port: 993, secure: true,
         auth: { user: EMAIL_USER, pass: EMAIL_PASS },
-        logger: false,
-        tls: { rejectUnauthorized: false }
+        logger: false, tls: { rejectUnauthorized: false }
     });
 
     try {
         await client.connect();
         await client.mailboxOpen('INBOX');
 
-        // --- CONEXIÓN A GOOGLE SHEETS ---
+        // --- CARGAR EXCEL ---
         let todosLosClientes = [];
         try {
             const auth = new google.auth.GoogleAuth({
@@ -60,14 +48,13 @@ app.get("/api/emails", async (req, res) => {
                 scopes: ["https://www.googleapis.com/auth/spreadsheets.readonly"]
             });
             const sheets = google.sheets({ version: "v4", auth });
+            // Usamos "Clientes" con C mayúscula como en tu foto
             const spreadsheet = await sheets.spreadsheets.values.get({ 
                 spreadsheetId: SPREADSHEET_ID, 
                 range: "Clientes!A2:K500" 
             });
             todosLosClientes = spreadsheet.data.values || [];
-        } catch (e) { 
-            console.log("⚠️ Error Sheets:", e.message); 
-        }
+        } catch (e) { console.log("⚠️ Error Sheets:", e.message); }
         
         let emailsParaMostrar = [];
         let list = await client.search({ from: "netflix" });
@@ -79,20 +66,12 @@ app.get("/api/emails", async (req, res) => {
             let contenido = (parsed.text || "").toLowerCase();
             let htmlOriginal = parsed.html || parsed.textAsHtml || "";
 
-            // FILTROS ORIGINALES
-            const esCorreoDeCambio = 
-                subject.includes("cambio") || subject.includes("cuenta") || 
-                subject.includes("contraseña") || subject.includes("password") ||
-                subject.includes("sesión") || contenido.includes("cambiar la información") ||
-                contenido.includes("restablecer tu contraseña");
-
-            const esAccesoUtil = 
-                subject.includes("código") || subject.includes("codigo") || 
-                subject.includes("temporal") || subject.includes("hogar") || 
-                subject.includes("viaje");
+            const esCorreoDeCambio = subject.includes("cambio") || subject.includes("contraseña") || subject.includes("password");
+            const esAccesoUtil = subject.includes("código") || subject.includes("codigo") || subject.includes("temporal") || subject.includes("hogar") || subject.includes("viaje");
 
             if (esAccesoUtil && !esCorreoDeCambio) {
-                const correoDestino = (msg.envelope.to[0].address || "").toLowerCase().trim();
+                // LIMPIEZA DEL CORREO QUE LLEGA DE NETFLIX
+                const correoDestino = (msg.envelope.to[0].address || "").toLowerCase().replace(/\s+/g, '').trim();
                 
                 const linkMatch = htmlOriginal.match(/href="([^"]*update-home[^"]*)"/) || 
                                   htmlOriginal.match(/href="([^"]*confirm-account[^"]*)"/) ||
@@ -100,22 +79,21 @@ app.get("/api/emails", async (req, res) => {
                 const elLink = linkMatch ? linkMatch[1] : null;
 
                 if (elLink) {
-                    // Buscar en Columna E (Índice 4)
-                    let clientesMatch = todosLosClientes.filter(f => 
-                        (f[4] || "").toLowerCase().trim() === correoDestino
-                    );
+                    // BUSQUEDA ULTRA-LIMPIA EN EL EXCEL
+                    let clientesMatch = todosLosClientes.filter(f => {
+                        const emailExcel = (f[4] || "").toLowerCase().replace(/\s+/g, '').trim();
+                        return emailExcel === correoDestino;
+                    });
                     
                     if (clientesMatch.length > 0) {
-                        // SI HAY MATCH: Enviar a cada cliente
                         for (let c of clientesMatch) {
                             const msj = `🏠 *ACTUALIZACIÓN NETFLIX*\n\nHola *${c[1]}*, pulsa el botón para activar tu TV:\n\n${elLink}`;
                             await enviarWA(c[2], msj);
                         }
                     } else {
-                        // SI NO HAY MATCH: Enviar al ADMIN para que no se pierda
+                        // Enviamos al admin solo si después de la limpieza no hay match
                         const msjAdmin = `⚠️ *CUENTA NO ENCONTRADA*\n\nEl correo *${correoDestino}* no está en tu Excel.\n\nLink: ${elLink}`;
                         await enviarWA(ADMIN_PHONE, msjAdmin);
-                        console.log(`Log: Correo ${correoDestino} enviado al Admin.`);
                     }
                 }
 
@@ -124,22 +102,15 @@ app.get("/api/emails", async (req, res) => {
                     hour: '2-digit', minute: '2-digit', hour12: true
                 });
 
-                emailsParaMostrar.push({
-                    subject: msg.envelope.subject,
-                    date: fechaRD,
-                    to: correoDestino, 
-                    html: htmlOriginal
-                });
+                emailsParaMostrar.push({ subject: msg.envelope.subject, date: fechaRD, to: correoDestino, html: htmlOriginal });
             }
         }
-
         await client.logout();
         res.json({ emails: emailsParaMostrar });
-
     } catch (error) {
         if (client) await client.logout().catch(() => {});
-        res.status(500).json({ error: "Error de conexión" });
+        res.status(500).json({ error: "Error" });
     }
 });
 
-app.listen(PORT, '0.0.0.0', () => { console.log("🚀 Sistema con respaldo de Admin activo"); });
+app.listen(PORT, '0.0.0.0', () => { console.log("🚀 Sistema optimizado"); });
