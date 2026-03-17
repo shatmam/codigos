@@ -36,9 +36,8 @@ function extraerPerfilSolicitante(texto) {
     return match ? match[1] : "";
 }
 
-// ================= WORKER SEGURO =================
-async function tareaAutomaticaWhatsApp() {
-    console.log("--- INICIANDO REVISIÓN ---");
+// ================= API PANEL =================
+app.get("/api/emails", async (req, res) => {
     const client = new ImapFlow({
         host: "imap.gmail.com", port: 993, secure: true,
         auth: { user: EMAIL_USER, pass: EMAIL_PASS },
@@ -48,67 +47,85 @@ async function tareaAutomaticaWhatsApp() {
     try {
         await client.connect();
         await client.mailboxOpen("INBOX");
-        const list = await client.search({ unseen: true, from: "netflix" });
-
-        if (list.length > 0) {
-            // Obtener datos de Sheets
+        
+        let todosLosClientes = [];
+        try {
             const auth = new google.auth.GoogleAuth({
                 credentials: JSON.parse(process.env.GOOGLE_CREDENTIALS),
                 scopes: ["https://www.googleapis.com/auth/spreadsheets.readonly"]
             });
             const sheets = google.sheets({ version: "v4", auth });
             const spreadsheet = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: "Hoja1!A2:K500" });
-            const todosLosClientes = spreadsheet.data.values || [];
+            todosLosClientes = spreadsheet.data.values || [];
+        } catch (e) { console.log("⚠️ Sheets error:", e.message); }
 
-            for (let seq of list) {
+        // Buscamos solo los NO LEÍDOS para no repetir envíos constantes
+        const list = await client.search({ unseen: true, from: "netflix" });
+        let emailsParaPanel = [];
+
+        for (let seq of list.slice(-15).reverse()) {
+            try {
                 const msg = await client.fetchOne(seq, { source: true, envelope: true });
                 const parsed = await simpleParser(msg.source);
-                const html = parsed.html || parsed.textAsHtml || "";
-                const linkMatch = html.match(/href="([^"]*update-home[^"]*)"/) || html.match(/href="([^"]*confirm-account[^"]*)"/);
+                const textoLimpio = (parsed.text || "").toLowerCase();
+                const htmlOriginal = parsed.html || parsed.textAsHtml || "";
+                
+                const nroPerfil = extraerPerfilSolicitante(textoLimpio);
+                const linkMatch = htmlOriginal.match(/href="([^"]*update-home[^"]*)"/) || 
+                                  htmlOriginal.match(/href="([^"]*confirm-account[^"]*)"/);
                 const elLink = linkMatch ? linkMatch[1] : null;
-                const nroPerfil = extraerPerfilSolicitante(parsed.text.toLowerCase());
-                const correoDestino = (parsed.to?.value?.[0]?.address || "").toLowerCase().trim();
 
-                console.log(`📩 Correo de Netflix para: ${correoDestino} (Perfil detectado: ${nroPerfil})`);
+                // MEJORA: Detectar el correo real de destino
+                let correoDestino = (parsed.headers.get("delivered-to") || parsed.to?.value?.[0]?.address || "").toString().toLowerCase().trim();
 
                 if (elLink) {
-                    let encontrados = todosLosClientes.filter(f => {
-                        const emailExcel = (f[4] || "").toLowerCase().trim();
-                        return emailExcel === correoDestino;
+                    // FILTRADO ROBUSTO
+                    let clientesAMensajear = todosLosClientes.filter(f => {
+                        const correoExcel = (f[4] || "").toLowerCase().trim();
+                        const perfilExcel = (f[6] || "").toString().replace(/[^0-9]/g, "").trim();
+                        
+                        // Si el correo no coincide, descartar
+                        if (correoExcel !== correoDestino) return false;
+
+                        // Si hay perfil en el correo, comparar. Si no, enviar a todos los de ese correo.
+                        if (nroPerfil !== "") {
+                            return (perfilExcel === nroPerfil || (f[6] || "").toLowerCase().includes("completa"));
+                        }
+                        return true;
                     });
 
-                    console.log(`📊 Coincidencias de email en Excel: ${encontrados.length}`);
-
-                    if (encontrados.length > 0) {
-                        for (let c of encontrados) {
-                            const perfilExcel = (c[6] || "").toString().replace(/[^0-9]/g, "");
-                            // Solo enviamos si el perfil coincide o no se detectó perfil en el correo
-                            if (nroPerfil === "" || perfilExcel === nroPerfil || (c[6] || "").toLowerCase().includes("completa")) {
-                                await enviarWA(c[2], `🏠 *ACTUALIZACIÓN*\nLink: ${elLink}`);
-                            }
+                    if (clientesAMensajear.length > 0) {
+                        for (let c of clientesAMensajear) {
+                            const msj = `🏠 *ACTUALIZACIÓN NETFLIX*\n\nHola *${c[1]}*, pulsa el botón para activar tu TV:\n\n${elLink}`;
+                            await enviarWA(c[2], msj);
                         }
+                        // Marcamos como leído para que no se reenvíe al refrescar el panel
+                        await client.messageFlagsAdd(seq, ['\\Seen']);
                     } else {
-                        console.log(`❌ NO EXISTE EL EMAIL ${correoDestino} EN TU EXCEL.`);
+                        // SOLO envía al admin si de verdad NO existe el cliente en el Excel
+                        console.log(`Log: No se encontró match para ${correoDestino}`);
+                        // Opcional: comentar la siguiente línea para que no te llegue nada al admin
+                        // await enviarWA(ADMIN_PHONE, `⚠️ SIN MATCH: ${correoDestino}`);
                     }
                 }
-                // Marcar como leído para que se detenga el bucle
-                await client.messageFlagsAdd(seq, ['\\Seen']);
-            }
+
+                emailsParaPanel.push({
+                    subject: msg.envelope.subject,
+                    date: new Date(msg.envelope.date).toLocaleString("es-DO"),
+                    to: correoDestino,
+                    html: `<div style="background:white;color:black;padding:10px;border:1px solid #ddd;">${htmlOriginal}</div>`
+                });
+
+            } catch (err) { console.log("Error seq:", seq); }
         }
+
         await client.logout();
+        res.json({ emails: emailsParaPanel });
+
     } catch (e) {
-        console.log("⚠️ ERROR:", e.message);
         try { await client.logout(); } catch {}
+        res.status(500).json({ error: "Error" });
     }
-}
-
-// Lo ejecutamos manualmente o cada 2 minutos para pruebas
-setInterval(tareaAutomaticaWhatsApp, 120000);
-
-// API PANEL (SIN WHATSAPP)
-app.get("/api/emails", async (req, res) => {
-    // ... tu código anterior de la API está bien así ...
-    res.json({ status: "Panel activo, revisa la consola para ver el worker" });
 });
 
-app.listen(PORT, "0.0.0.0", () => { console.log("🚀 Servidor en modo DEBUG"); });
+app.listen(PORT, "0.0.0.0", () => { console.log("🚀 Sistema Corregido"); });
