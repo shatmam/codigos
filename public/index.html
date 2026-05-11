@@ -7,6 +7,15 @@
     <style>
         body { font-family: sans-serif; background-color: #141414; color: white; padding: 20px; text-align: center; }
         .container { max-width: 600px; margin: auto; }
+        
+        /* Contenedor de publicidad arriba para que no estorbe al tocar botones */
+        #container-publicidad-top { 
+            margin-bottom: 20px; 
+            min-height: 50px; 
+            width: 100%;
+            overflow: hidden;
+        }
+
         button { 
             background-color: #e50914; color: white; border: none; padding: 15px 25px; 
             font-size: 18px; font-weight: bold; border-radius: 5px; cursor: pointer; width: 100%;
@@ -20,12 +29,13 @@
         .email-info { font-size: 12px; color: #aaa; margin-bottom: 8px; }
         .email-to { color: #00df81; font-weight: bold; margin-bottom: 10px; display: block; }
         .email-body { background: white; color: black; padding: 10px; border-radius: 4px; overflow: auto; }
-        
-        /* Estilo opcional para que el espacio publicitario no tape el contenido */
-        #container-publicidad { margin-top: 30px; min-height: 50px; }
     </style>
 </head>
 <body>
+
+    <div id="container-publicidad-top">
+        <script src="https://pl29418682.profitablecpmratenetwork.com/0b/39/c8/0b39c848b807bc9ab524b27e170a0120.js"></script>
+    </div>
 
     <div class="container">
         <h1>SISTEMA DE CÓDIGOS</h1>
@@ -33,8 +43,6 @@
         <button id="btn" onclick="obtenerCorreos()">BUSCAR CÓDIGOS RECIENTES</button>
 
         <div id="lista"></div>
-
-        <div id="container-publicidad"></div>
     </div>
 
     <script>
@@ -76,7 +84,5 @@
             }
         }
     </script>
-
-    <script src="https://pl29418682.profitablecpmratenetwork.com/0b/39/c8/0b39c848b807bc9ab524b27e170a0120.js"></script>
 </body>
 </html>
