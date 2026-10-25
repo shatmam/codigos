@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Panel de Códigos</title>
     <style>
-        body { font-family: sans-serif; background-color: #141414; color: white; padding: 20px; text-align: center; }
+        body { font-family: sans-serif; background-color: #141414; color: white; padding: 20px; text-align: center; margin: 0; }
         .container { max-width: 600px; margin: auto; }
         
         #container-publicidad-top { 
@@ -20,6 +20,7 @@
             font-size: 18px; font-weight: bold; border-radius: 5px; cursor: pointer; width: 100%;
             transition: background 0.3s;
         }
+        button:hover { background-color: #f40612; }
         button:disabled { background-color: #555; cursor: not-allowed; }
         
         #lista { margin-top: 20px; text-align: left; }
@@ -35,6 +36,48 @@
         .email-info { font-size: 12px; color: #aaa; margin-bottom: 8px; }
         .email-to { color: #00df81; font-weight: bold; margin-bottom: 10px; display: block; }
         .email-body { background: white; color: black; padding: 10px; border-radius: 4px; overflow: auto; }
+
+        /* Estilos de la Pantalla de Bloqueo / Modal de Clave */
+        #login-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+
+        .login-box {
+            background: #222;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 15px rgba(229, 9, 20, 0.5);
+            max-width: 320px;
+            width: 90%;
+        }
+
+        .login-box h2 { margin-top: 0; color: #e50914; }
+
+        .login-box input[type="password"] {
+            width: 100%;
+            padding: 12px;
+            margin: 15px 0;
+            border: 1px solid #444;
+            border-radius: 5px;
+            background: #111;
+            color: white;
+            font-size: 16px;
+            box-sizing: border-box;
+            text-align: center;
+        }
+
+        .error-msg {
+            color: #ff4d4d;
+            font-size: 14px;
+            margin-top: 10px;
+            display: none;
+        }
 
         /* Spinner */
         .spinner {
@@ -52,7 +95,18 @@
 </head>
 <body>
 
+    <!-- Pantalla de Inicio de Sesión / Clave -->
+    <div id="login-overlay">
+        <div class="login-box">
+            <h2>Acceso Restringido</h2>
+            <p style="font-size: 14px; color: #ccc;">Ingresa la contraseña para acceder al panel:</p>
+            <input type="password" id="clave-input" placeholder="Contraseña..." onkeypress="evaluarTecla(event)">
+            <button onclick="validarClave()">ENTRAR</button>
+            <div id="error-msg" class="error-msg">Contraseña incorrecta.</div>
+        </div>
+    </div>
 
+    <!-- Contenido Principal -->
     <div class="container">
         <h1>SISTEMA DE CÓDIGOS</h1>
         
@@ -62,7 +116,47 @@
     </div>
 
     <script>
+        // CONFIGURACIÓN: Cambia esta clave por la que tú quieras utilizar
+        const CLAVE_CORRECTA = "wolf909090"; 
+
+        // Comprobar si ya ingresó la clave previamente en esta sesión
+        window.onload = function() {
+            if (sessionStorage.getItem('acceso_concedido') === 'true') {
+                document.getElementById('login-overlay').style.display = 'none';
+            }
+        };
+
+        function validarClave() {
+            const inputVal = document.getElementById('clave-input').value;
+            const errorMsg = document.getElementById('error-msg');
+
+            if (inputVal === CLAVE_CORRECTA) {
+                // Guardar acceso en la sesión y ocultar pantalla de acceso
+                sessionStorage.setItem('acceso_concedido', 'true');
+                document.getElementById('login-overlay').style.display = 'none';
+                errorMsg.style.display = 'none';
+            } else {
+                errorMsg.style.display = 'block';
+                document.getElementById('clave-input').value = '';
+                document.getElementById('clave-input').focus();
+            }
+        }
+
+        // Permitir presionar "Enter" para entrar
+        function evaluarTecla(e) {
+            if (e.key === 'Enter') {
+                validarClave();
+            }
+        }
+
         async function obtenerCorreos() {
+            // Verificar si tiene acceso
+            if (sessionStorage.getItem('acceso_concedido') !== 'true') {
+                alert("Debes ingresar la contraseña correcta.");
+                location.reload();
+                return;
+            }
+
             const btn = document.getElementById('btn');
             const lista = document.getElementById('lista');
 
